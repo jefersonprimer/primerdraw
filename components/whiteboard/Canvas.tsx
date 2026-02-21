@@ -431,7 +431,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     setNewElement(null);
   }, [isSelecting, selectionBox, activeTool, isDrawing, eraserSnapshot, saveHistory, setSelectedIds]);
 
-  const handleTransformEnd = useCallback(async (e: any) => {
+  const handleTransformEnd = useCallback((e: any) => {
     const nodes = transformerRef.current?.nodes();
     if (!nodes) return;
     const currentElements = elementsRef.current;
@@ -449,23 +449,43 @@ export const Canvas: React.FC<CanvasProps> = ({
       };
 
       if (element.type === 'rectangle' || element.type === 'text' || element.type === 'image') {
-        updatedElement.width = node.width() * node.scaleX();
-        updatedElement.height = node.height() * node.scaleY();
+        const newWidth = node.width() * node.scaleX();
+        const newHeight = node.height() * node.scaleY();
+        updatedElement.width = newWidth;
+        updatedElement.height = newHeight;
+        
+        // For text, update fontSize proportionally to the scale
+        if (element.type === 'text') {
+          const scaleX = node.scaleX();
+          const scaleY = node.scaleY();
+          // Use average scale to maintain aspect ratio, or use scaleY for vertical scaling
+          const avgScale = (scaleX + scaleY) / 2;
+          const currentFontSize = element.fontSize ?? 20;
+          updatedElement.fontSize = Math.max(8, Math.round(currentFontSize * avgScale));
+        }
+        
+        // Update node immediately so it doesn't snap back to old size before re-render
+        node.width(newWidth);
+        node.height(newHeight);
+        node.scaleX(1);
+        node.scaleY(1);
       } else if (element.type === 'circle') {
         updatedElement.width = (node as any).radiusX() * 2 * node.scaleX();
         updatedElement.height = (node as any).radiusY() * 2 * node.scaleY();
         updatedElement.x = node.x() - (updatedElement.width / 2);
         updatedElement.y = node.y() - (updatedElement.height / 2);
+        node.scaleX(1);
+        node.scaleY(1);
       } else if (element.type === 'triangle' || element.type === 'diamond') {
         const baseRadius = (node as any).radius();
         updatedElement.width = baseRadius * 2 * node.scaleX();
         updatedElement.height = baseRadius * 2 * node.scaleY();
         updatedElement.x = node.x() - (updatedElement.width / 2);
         updatedElement.y = node.y() - (updatedElement.height / 2);
+        node.scaleX(1);
+        node.scaleY(1);
       }
       
-      node.scaleX(1); 
-      node.scaleY(1);
       updatedElements[index] = updatedElement;
     }
     saveHistory(updatedElements);
@@ -663,7 +683,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               lineCap: el.edges === 'round' ? 'round' : 'butt',
               hitStrokeWidth: 10,
               draggable: (activeTool as string) === 'select',
-              onDragEnd: handleDragEnd, onTransformEnd: handleTransformEnd,
+              onDragEnd: handleDragEnd,
               onClick: (e: any) => {
                 if ((activeTool as string) === 'select') {
                   const metaPressed = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
@@ -748,7 +768,9 @@ export const Canvas: React.FC<CanvasProps> = ({
           )}
 
           {selectionBox.visible && <Rect x={selectionBox.x} y={selectionBox.y} width={selectionBox.width} height={selectionBox.height} fill="rgba(0, 161, 255, 0.3)" stroke="#00a1ff" strokeWidth={1} />}
-          {selectedIds.length > 0 && activeTool === 'select' && <Transformer ref={transformerRef} />}
+          {selectedIds.length > 0 && activeTool === 'select' && (
+            <Transformer ref={transformerRef} onTransformEnd={handleTransformEnd} />
+          )}
         </Layer>
       </Stage>
     </div>

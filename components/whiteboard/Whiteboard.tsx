@@ -37,6 +37,12 @@ export default function Whiteboard() {
     textAlign: 'left',
   });
 
+  // Ref to always have latest elements (avoids stale closure when panel updates after transform)
+  const elementsRef = useRef(elements);
+  useEffect(() => {
+    elementsRef.current = elements;
+  }, [elements]);
+
   // Load saved view state from localStorage
   useEffect(() => {
     const savedZoom = localStorage.getItem('whiteboard-zoom');
@@ -143,17 +149,17 @@ export default function Whiteboard() {
       return;
     }
 
-    const updatedElements = elements.map(el => {
+    // Use elementsRef so we always merge into the latest state (preserves width/height after resize)
+    const currentElements = elementsRef.current;
+    const updatedElements = currentElements.map(el => {
       if (selectedIds.includes(el.id)) {
         return { ...el, ...updates };
       }
       return el;
     });
 
-    // For property updates, we might want to save history only when the interaction finishes
-    // But for now, let's just save it. In a real app, we'd debounce this or use an 'onFinishChange' event.
     saveHistory(updatedElements);
-  }, [elements, selectedIds, saveHistory]);
+  }, [selectedIds, saveHistory]);
 
   const handleLayerChange = useCallback(async (action: 'front' | 'back' | 'forward' | 'backward') => {
     if (selectedIds.length === 0) return;
