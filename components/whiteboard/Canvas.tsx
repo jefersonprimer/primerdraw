@@ -19,6 +19,8 @@ interface CanvasProps {
   setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
   defaultProps: Partial<WhiteboardElement>;
   zoom: number;
+  stagePosition: { x: number; y: number };
+  setStagePosition: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
 }
 
 const ImageElement = ({ el, activeTool, onDragEnd, onTransformEnd, onClick }: any) => {
@@ -52,7 +54,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   selectedIds,
   setSelectedIds,
   defaultProps,
-  zoom
+  zoom,
+  stagePosition,
+  setStagePosition
 }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -497,6 +501,45 @@ export const Canvas: React.FC<CanvasProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Update stage position when stagePosition prop changes (but not during drag)
+  // Note: Initial position is set via x/y props on Stage
+  const isDraggingRef = useRef(false);
+  useEffect(() => {
+    if (isDraggingRef.current) return; // Don't update during drag
+    const stage = stageRef.current;
+    if (stage) {
+      const currentPos = stage.position();
+      // Only update if position actually changed to avoid unnecessary updates
+      if (currentPos.x !== stagePosition.x || currentPos.y !== stagePosition.y) {
+        stage.position(stagePosition);
+      }
+    }
+  }, [stagePosition]);
+
+  // Handle stage drag start
+  const handleStageDragStart = useCallback(() => {
+    isDraggingRef.current = true;
+  }, []);
+
+  // Handle stage drag end to save position
+  const handleStageDragEnd = useCallback(() => {
+    isDraggingRef.current = false;
+    const stage = stageRef.current;
+    if (stage) {
+      const pos = stage.position();
+      setStagePosition({ x: pos.x, y: pos.y });
+    }
+  }, [setStagePosition]);
+
+  // Also save position during drag
+  const handleStageDragMove = useCallback(() => {
+    const stage = stageRef.current;
+    if (stage) {
+      const pos = stage.position();
+      setStagePosition({ x: pos.x, y: pos.y });
+    }
+  }, [setStagePosition]);
+
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -525,13 +568,15 @@ export const Canvas: React.FC<CanvasProps> = ({
           y: pointer.y - mousePointTo.y * clampedScale,
         };
         stage.position(newPos);
+        // Save position after zoom
+        setStagePosition(newPos);
       }
     };
 
     const container = stageRef.current?.container();
     container?.addEventListener('wheel', handleWheel, { passive: false });
     return () => container?.removeEventListener('wheel', handleWheel);
-  }, [zoom]);
+  }, [zoom, setStagePosition]);
 
   useEffect(() => {
     if (transformerRef.current) {
@@ -598,9 +643,14 @@ export const Canvas: React.FC<CanvasProps> = ({
       <Stage
         width={stageSize.width} height={stageSize.height}
         onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
+        onDragStart={handleStageDragStart}
+        onDragEnd={handleStageDragEnd}
+        onDragMove={handleStageDragMove}
         ref={stageRef} draggable={(activeTool as string) === 'hand'}
         scaleX={zoom}
         scaleY={zoom}
+        x={stagePosition.x}
+        y={stagePosition.y}
         style={{ cursor: activeTool === 'hand' ? 'grab' : activeTool === 'select' ? 'default' : 'crosshair' }}
       >
         <Layer>

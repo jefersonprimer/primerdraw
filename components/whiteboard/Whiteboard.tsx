@@ -19,6 +19,7 @@ export default function Whiteboard() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [defaultProps, setDefaultProps] = useState<Partial<WhiteboardElement>>({
@@ -35,6 +36,40 @@ export default function Whiteboard() {
     fontSize: 20,
     textAlign: 'left',
   });
+
+  // Load saved view state from localStorage
+  useEffect(() => {
+    const savedZoom = localStorage.getItem('whiteboard-zoom');
+    const savedPosition = localStorage.getItem('whiteboard-position');
+    
+    if (savedZoom) {
+      const zoomValue = parseFloat(savedZoom);
+      if (!isNaN(zoomValue) && zoomValue >= 0.1 && zoomValue <= 5) {
+        setZoom(zoomValue);
+      }
+    }
+    
+    if (savedPosition) {
+      try {
+        const position = JSON.parse(savedPosition);
+        if (position && typeof position.x === 'number' && typeof position.y === 'number') {
+          setStagePosition(position);
+        }
+      } catch (e) {
+        // Invalid JSON, ignore
+      }
+    }
+  }, []);
+
+  // Save zoom to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('whiteboard-zoom', zoom.toString());
+  }, [zoom]);
+
+  // Save position to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('whiteboard-position', JSON.stringify(stagePosition));
+  }, [stagePosition]);
 
   useEffect(() => {
     const handleUpdateZoom = (e: any) => {
@@ -206,6 +241,8 @@ export default function Whiteboard() {
         setSelectedIds={setSelectedIds}
         defaultProps={defaultProps}
         zoom={zoom}
+        stagePosition={stagePosition}
+        setStagePosition={setStagePosition}
       />
       {(selectedIds.length > 0 || isDrawingTool) && (
         <PropertiesPanel 
