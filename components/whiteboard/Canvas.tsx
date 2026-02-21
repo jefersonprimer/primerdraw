@@ -66,6 +66,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [eraserSnapshot, setEraserSnapshot] = useState<WhiteboardElement[] | null>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
+  const [draggingControlPoint, setDraggingControlPoint] = useState<{ elementId: string; pointIndex: number } | null>(null);
 
   const elementsRef = useRef(elements);
   useEffect(() => {
@@ -484,6 +485,35 @@ export const Canvas: React.FC<CanvasProps> = ({
         updatedElement.y = node.y() - (updatedElement.height / 2);
         node.scaleX(1);
         node.scaleY(1);
+      } else if (element.type === 'arrow' || element.type === 'line') {
+        // For arrows and lines:
+        // - Horizontal scaling (scaleX) changes the length (X coordinates of points)
+        // - Vertical scaling (scaleY) changes the thickness (strokeWidth)
+        const points = element.points || [0, 0, 0, 0];
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+        
+        // Scale X coordinates for length
+        const scaledPoints = points.map((p, idx) => {
+          if (idx % 2 === 0) {
+            // X coordinate - affects length
+            return p * scaleX;
+          } else {
+            // Y coordinate - keep original for shape, but we'll adjust strokeWidth instead
+            return p;
+          }
+        });
+        
+        updatedElement.points = scaledPoints;
+        
+        // Scale strokeWidth based on vertical scaling (grossura)
+        const currentStrokeWidth = element.strokeWidth || 2;
+        const newStrokeWidth = Math.max(1, Math.round(currentStrokeWidth * scaleY));
+        updatedElement.strokeWidth = newStrokeWidth;
+        
+        // Reset scale
+        node.scaleX(1);
+        node.scaleY(1);
       }
       
       updatedElements[index] = updatedElement;
@@ -658,6 +688,96 @@ export const Canvas: React.FC<CanvasProps> = ({
     return [];
   };
 
+  // Calculate control points for arrows and lines
+  const getControlPoints = useCallback((element: WhiteboardElement) => {
+    const points = element.points || [0, 0, 0, 0];
+    
+    // If we have 4 points (straight line), calculate tail, middle, and head
+    if (points.length === 4) {
+      const [x1, y1, x2, y2] = points;
+      return {
+        tail: { x: element.x + x1, y: element.y + y1 },
+        middle: { x: element.x + (x1 + x2) / 2, y: element.y + (y1 + y2) / 2 },
+        head: { x: element.x + x2, y: element.y + y2 },
+        isCurved: false
+      };
+    }
+    
+    // If we have 6 points (curved line with middle point), calculate all three
+    if (points.length === 6) {
+      const [x1, y1, mx, my, x2, y2] = points;
+      return {
+        tail: { x: element.x + x1, y: element.y + y1 },
+        middle: { x: element.x + mx, y: element.y + my },
+        head: { x: element.x + x2, y: element.y + y2 },
+        isCurved: true
+      };
+    }
+    
+    return null;
+  }, []);
+
+  // Handle control point drag
+  const handleControlPointDragStart = useCallback((elementId: string, pointIndex: number) => {
+    setDraggingControlPoint({ elementId, pointIndex });
+  }, []);
+
+  const handleControlPointDrag = useCallback((e: any, elementId: string, pointIndex: number) => {
+    const stage = e.target.getStage();
+    const pos = getRelativePointerPosition(stage);
+    const currentElements = elementsRef.current;
+    const element = currentElements.find(el => el.id === elementId);
+    if (!element || (element.type !== 'arrow' && element.type !== 'line')) return;
+
+    const points = element.points || [0, 0, 0, 0];
+    let newPoints: number[];
+
+    if (points.length === 4) {
+      // Straight line - convert to curved when middle point is dragged
+      const [x1, y1, x2, y2] = points;
+      if (pointIndex === 1) {
+        // Middle point - convert to curved line
+        const mx = pos.x - element.x;
+        const my = pos.y - element.y;
+        newPoints = [x1, y1, mx, my, x2, y2];
+      } else if (pointIndex === 0) {
+        // Tail point
+        newPoints = [pos.x - element.x, pos.y - element.y, x2, y2];
+      } else {
+        // Head point
+        newPoints = [x1, y1, pos.x - element.x, pos.y - element.y];
+      }
+    } else if (points.length === 6) {
+      // Curved line
+      const [x1, y1, mx, my, x2, y2] = points;
+      if (pointIndex === 0) {
+        // Tail point
+        newPoints = [pos.x - element.x, pos.y - element.y, mx, my, x2, y2];
+      } else if (pointIndex === 1) {
+        // Middle point
+        newPoints = [x1, y1, pos.x - element.x, pos.y - element.y, x2, y2];
+      } else {
+        // Head point
+        newPoints = [x1, y1, mx, my, pos.x - element.x, pos.y - element.y];
+      }
+    } else {
+      return;
+    }
+
+    const updatedElements = currentElements.map(el => 
+      el.id === elementId ? { ...el, points: newPoints } : el
+    );
+    setElements(updatedElements);
+    elementsRef.current = updatedElements;
+  }, [setElements]);
+
+  const handleControlPointDragEnd = useCallback(() => {
+    // Save to history when drag ends
+    const currentElements = elementsRef.current;
+    saveHistory(currentElements);
+    setDraggingControlPoint(null);
+  }, [saveHistory]);
+
   return (
     <div className="w-full h-screen bg-gray-50 overflow-hidden">
       <Stage
@@ -710,8 +830,18 @@ export const Canvas: React.FC<CanvasProps> = ({
               const rh = Math.max(Math.abs(el.height ?? 0), 1);
               return <RegularPolygon key={el.id} {...commonProps} sides={3} radius={rw / 2} scaleY={rh / rw} x={el.x + rw / 2} y={el.y + rh / 2} />;
             }
-            if (el.type === 'line' || el.type === 'pencil') return <Line key={el.id} {...commonProps} points={el.points || []} tension={el.type === 'pencil' ? 0.5 : 0} />;
-            if (el.type === 'arrow') return <Arrow key={el.id} {...commonProps} points={el.points || []} fill={el.stroke} pointerAtEnding={el.arrowheads} />;
+            if (el.type === 'line' || el.type === 'pencil') {
+              const points = el.points || [];
+              // Use tension for curved lines (6 points) or pencil
+              const tension = el.type === 'pencil' ? 0.5 : (points.length === 6 ? 0.5 : 0);
+              return <Line key={el.id} {...commonProps} points={points} tension={tension} />;
+            }
+            if (el.type === 'arrow') {
+              const points = el.points || [];
+              // Use tension for curved arrows (6 points)
+              const tension = points.length === 6 ? 0.5 : 0;
+              return <Arrow key={el.id} {...commonProps} points={points} fill={el.stroke} pointerAtEnding={el.arrowheads} tension={tension} />;
+            }
             if (el.type === 'text') return <Text key={el.id} {...commonProps} strokeWidth={0} fill={el.stroke} text={el.text ?? ''} fontSize={el.fontSize ?? 20} fontFamily={el.fontFamily ?? 'Sans-serif'} fontStyle="normal" lineHeight={1.2} align={el.textAlign ?? 'left'} width={el.width ?? 0} height={el.height ?? 0} onDblClick={(e) => handleTextInput(el.x, el.y, el.id, el.text ?? '')} />;
             if (el.type === 'image') return <ImageElement key={el.id} el={el} activeTool={activeTool} {...commonProps} />;
             return null;
@@ -768,6 +898,102 @@ export const Canvas: React.FC<CanvasProps> = ({
           )}
 
           {selectionBox.visible && <Rect x={selectionBox.x} y={selectionBox.y} width={selectionBox.width} height={selectionBox.height} fill="rgba(0, 161, 255, 0.3)" stroke="#00a1ff" strokeWidth={1} />}
+          
+          {/* Control points for arrows and lines */}
+          {selectedIds.length > 0 && activeTool === 'select' && selectedIds.map(id => {
+            const element = elements.find(el => el.id === id);
+            if (!element || (element.type !== 'arrow' && element.type !== 'line')) return null;
+            
+            const controlPoints = getControlPoints(element);
+            if (!controlPoints) return null;
+            
+            return (
+              <React.Fragment key={`controls-${id}`}>
+                {/* Tail point */}
+                <Circle
+                  x={controlPoints.tail.x}
+                  y={controlPoints.tail.y}
+                  radius={6}
+                  fill="#00a1ff"
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  draggable
+                  onDragStart={(e) => {
+                    e.cancelBubble = true;
+                    handleControlPointDragStart(id, 0);
+                  }}
+                  onDragMove={(e) => {
+                    e.cancelBubble = true;
+                    handleControlPointDrag(e, id, 0);
+                  }}
+                  onDragEnd={(e) => {
+                    e.cancelBubble = true;
+                    handleControlPointDragEnd();
+                  }}
+                  onClick={(e) => {
+                    e.cancelBubble = true;
+                  }}
+                  hitStrokeWidth={10}
+                  listening={true}
+                />
+                {/* Middle point */}
+                <Circle
+                  x={controlPoints.middle.x}
+                  y={controlPoints.middle.y}
+                  radius={6}
+                  fill="#00a1ff"
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  draggable
+                  onDragStart={(e) => {
+                    e.cancelBubble = true;
+                    handleControlPointDragStart(id, 1);
+                  }}
+                  onDragMove={(e) => {
+                    e.cancelBubble = true;
+                    handleControlPointDrag(e, id, 1);
+                  }}
+                  onDragEnd={(e) => {
+                    e.cancelBubble = true;
+                    handleControlPointDragEnd();
+                  }}
+                  onClick={(e) => {
+                    e.cancelBubble = true;
+                  }}
+                  hitStrokeWidth={10}
+                  listening={true}
+                />
+                {/* Head point */}
+                <Circle
+                  x={controlPoints.head.x}
+                  y={controlPoints.head.y}
+                  radius={6}
+                  fill="#00a1ff"
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  draggable
+                  onDragStart={(e) => {
+                    e.cancelBubble = true;
+                    handleControlPointDragStart(id, 2);
+                  }}
+                  onDragMove={(e) => {
+                    e.cancelBubble = true;
+                    handleControlPointDrag(e, id, 2);
+                  }}
+                  onDragEnd={(e) => {
+                    e.cancelBubble = true;
+                    handleControlPointDragEnd();
+                  }}
+                  onClick={(e) => {
+                    e.cancelBubble = true;
+                  }}
+                  hitStrokeWidth={10}
+                  listening={true}
+                />
+              </React.Fragment>
+            );
+          })}
+          
           {selectedIds.length > 0 && activeTool === 'select' && (
             <Transformer ref={transformerRef} onTransformEnd={handleTransformEnd} />
           )}
