@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Toolbar, Tool } from './Toolbar';
 import { PropertiesPanel } from './PropertiesPanel';
 import { db, WhiteboardElement } from '@/lib/db';
 import { useHistoryState } from '@/lib/useHistoryState';
-import { Plus, Minus, Undo2, Redo2, ShieldCheck, HelpCircle } from 'lucide-react';
+import { Plus, Minus, Undo2, Redo2, ShieldCheck, HelpCircle, Menu, X } from 'lucide-react';
+import Sidebar from './Sidebar';
 
 const Canvas = dynamic(() => import('./Canvas').then((mod) => mod.Canvas), {
   ssr: false,
@@ -18,6 +19,8 @@ export default function Whiteboard() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const [defaultProps, setDefaultProps] = useState<Partial<WhiteboardElement>>({
     stroke: '#1e1e1e',
     fill: 'transparent',
@@ -154,7 +157,38 @@ export default function Whiteboard() {
   const isDrawingTool = ['rectangle', 'circle', 'triangle', 'diamond', 'line', 'arrow', 'pencil', 'text', 'image'].includes(activeTool);
 
   return (
-    <div className="relative w-full h-screen bg-gray-50">
+    <div className="relative w-full h-screen bg-gray-50 overflow-hidden">
+      {/* Menu Button */}
+      <div className="fixed top-4 left-4 z-[100]">
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="p-2.5 bg-white border border-gray-200 rounded-lg shadow-lg hover:bg-gray-50 text-gray-700 transition-all active:scale-95"
+          title="Menu"
+        >
+          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+
+      {/* Sidebar Overlay and Sidebar */}
+      <div 
+        className={`fixed inset-0 z-[90] transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      >
+        <div 
+          className="absolute inset-0 bg-transparent" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+        <div 
+          ref={sidebarRef}
+          className={`absolute top-16 left-4  transition-all duration-200 ease-out origin-top-left ${
+            isSidebarOpen 
+              ? 'opacity-100 scale-100 translate-y-0' 
+              : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
+          }`}
+        >
+          <Sidebar />
+        </div>
+      </div>
+
       <Toolbar 
         activeTool={activeTool} 
         setActiveTool={setActiveTool} 

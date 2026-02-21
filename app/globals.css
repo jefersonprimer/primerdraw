@@ -26,6 +26,10 @@ body {
   overflow: hidden;
 }
 
+button {
+  cursor: pointer;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
 }
