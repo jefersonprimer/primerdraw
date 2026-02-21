@@ -20,9 +20,10 @@ import {
 type SidebarProps = {
   onOpenClick?: () => void;
   onSaveClick?: () => void;
+  onResetCanvas?: () => void;
 }
 
-export default function Sidebar({ onOpenClick, onSaveClick }: SidebarProps) {
+export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas }: SidebarProps) {
   return (
     <div className="w-60 max-h-[calc(100vh-80px)] bg-white border border-neutral-200 rounded-xl p-3 flex flex-col text-sm overflow-y-auto shadow-2xl">
       
@@ -36,7 +37,7 @@ export default function Sidebar({ onOpenClick, onSaveClick }: SidebarProps) {
         <MenuItem icon={<Command size={16} />} label="Command palette" shortcut="Ctrl+/" highlight />
         <MenuItem icon={<Search size={16} />} label="Find on canvas" shortcut="Ctrl+F" />
         <MenuItem icon={<HelpCircle size={16} />} label="Help" shortcut="?" />
-        <MenuItem icon={<Trash2 size={16} />} label="Reset the canvas" isResetCanvas/>
+        <MenuItem icon={<Trash2 size={16} />} label="Reset the canvas" isResetCanvas onClick={onResetCanvas} />
 
       </div>
 

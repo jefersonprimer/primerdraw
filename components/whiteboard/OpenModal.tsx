@@ -10,9 +10,11 @@ interface OpenModalProps {
   onClose: () => void;
   currentElements: WhiteboardElement[];
   onReplace: (elements: WhiteboardElement[]) => void;
+  /** When set, show replace modal immediately with these elements (e.g. from share link hash). No file dialog. */
+  elementsFromHash?: WhiteboardElement[] | null;
 }
 
-export function OpenModal({ isOpen, onClose, currentElements, onReplace }: OpenModalProps) {
+export function OpenModal({ isOpen, onClose, currentElements, onReplace, elementsFromHash }: OpenModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loadedElements, setLoadedElements] = useState<WhiteboardElement[] | null>(null);
@@ -47,16 +49,21 @@ export function OpenModal({ isOpen, onClose, currentElements, onReplace }: OpenM
   }, [onClose]);
 
   useEffect(() => {
-    if (isOpen) {
-      handleFileSelect();
-    } else {
-      // Reset state when modal closes
+    if (!isOpen) {
       setSelectedFile(null);
       setLoadedElements(null);
       setSaveBeforeReplace(false);
       setSaveFilename('');
+      return;
     }
-  }, [isOpen, handleFileSelect]);
+    if (elementsFromHash != null) {
+      setLoadedElements(elementsFromHash);
+      setSaveFilename(generateDefaultFileName());
+      setSelectedFile(null);
+    } else {
+      handleFileSelect();
+    }
+  }, [isOpen, elementsFromHash, handleFileSelect]);
 
   const handleSaveCurrent = async () => {
     if (!saveFilename.trim()) {
@@ -124,7 +131,7 @@ export function OpenModal({ isOpen, onClose, currentElements, onReplace }: OpenM
         {/* Content */}
         <div className="p-6 space-y-4">
           <p className="text-sm text-neutral-600">
-            This will replace your current whiteboard with the content from the selected file.
+            This will replace your current whiteboard with the content from the {selectedFile ? 'selected file' : 'share link'}.
           </p>
 
           {selectedFile && (

@@ -101,3 +101,60 @@ export function openFileDialog(): Promise<File | null> {
     input.click();
   });
 }
+
+/**
+ * Codifica elementos para string base64url (segura para URL hash)
+ */
+function encodeToBase64Url(elements: WhiteboardElement[]): string {
+  const json = JSON.stringify({ version: '1.0', elements });
+  const encoded = typeof window !== 'undefined'
+    ? btoa(unescape(encodeURIComponent(json)))
+    : Buffer.from(json, 'utf-8').toString('base64');
+  return encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * Decodifica string base64url para elementos
+ */
+export function decodeFromBase64Url(hash: string): WhiteboardElement[] {
+  try {
+    let base64 = hash.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = base64.length % 4;
+    if (pad) base64 += '='.repeat(4 - pad);
+    const json =
+      typeof window !== 'undefined'
+        ? decodeURIComponent(escape(atob(base64)))
+        : Buffer.from(base64, 'base64').toString('utf-8');
+    const data = JSON.parse(json) as { elements?: WhiteboardElement[] };
+    if (!data.elements || !Array.isArray(data.elements)) {
+      throw new Error('Invalid hash: missing elements');
+    }
+    return data.elements;
+  } catch {
+    throw new Error('Invalid or corrupted share link');
+  }
+}
+
+/**
+ * Gera o link compartilhável com os elementos codificados no hash (#json=...)
+ */
+export function getShareableLink(elements: WhiteboardElement[]): string {
+  const encoded = encodeToBase64Url(elements);
+  const origin = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '';
+  return `${origin}#json=${encoded}`;
+}
+
+/**
+ * Extrai payload do hash da URL (#json=xxx). Retorna null se não houver.
+ */
+export function getElementsFromHash(): WhiteboardElement[] | null {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash;
+  const match = hash.match(/^#json=(.+)$/);
+  if (!match) return null;
+  try {
+    return decodeFromBase64Url(match[1]);
+  } catch {
+    return null;
+  }
+}

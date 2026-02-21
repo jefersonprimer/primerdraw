@@ -10,6 +10,8 @@ import { Plus, Minus, Undo2, Redo2, ShieldCheck, HelpCircle, Menu, X } from 'luc
 import Sidebar from './Sidebar';
 import { SaveModal } from './SaveModal';
 import { OpenModal } from './OpenModal';
+import { ClearCanvasModal } from './ClearCanvasModal';
+import { getElementsFromHash } from '@/lib/fileService';
 
 const Canvas = dynamic(() => import('./Canvas').then((mod) => mod.Canvas), {
   ssr: false,
@@ -26,6 +28,8 @@ export default function Whiteboard() {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isOpenModalOpen, setIsOpenModalOpen] = useState(false);
+  const [isClearCanvasModalOpen, setIsClearCanvasModalOpen] = useState(false);
+  const [elementsFromHash, setElementsFromHash] = useState<WhiteboardElement[] | null>(null);
   const [defaultProps, setDefaultProps] = useState<Partial<WhiteboardElement>>({
     stroke: '#1e1e1e',
     fill: 'transparent',
@@ -97,6 +101,23 @@ export default function Whiteboard() {
     loadElements();
   }, [setElements]);
 
+  // Open replace modal when app is loaded with a share link (#json=...)
+  useEffect(() => {
+    const fromHash = getElementsFromHash();
+    if (fromHash) {
+      setElementsFromHash(fromHash);
+      setIsOpenModalOpen(true);
+    }
+  }, []);
+
+  const handleOpenModalClose = useCallback(() => {
+    setIsOpenModalOpen(false);
+    setElementsFromHash(null);
+    if (typeof window !== 'undefined' && window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }, []);
+
   // Handle Undo/Redo keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -134,10 +155,12 @@ export default function Whiteboard() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo]);
 
-  const handleClearCanvas = useCallback(async () => {
-    if (confirm('Are you sure you want to clear the entire canvas?')) {
-      saveHistory([]);
-    }
+  const handleClearCanvas = useCallback(() => {
+    setIsClearCanvasModalOpen(true);
+  }, []);
+
+  const handleConfirmClearCanvas = useCallback(() => {
+    saveHistory([]);
   }, [saveHistory]);
 
   const handleReplaceElements = useCallback((newElements: WhiteboardElement[]) => {
@@ -242,6 +265,7 @@ export default function Whiteboard() {
           <Sidebar 
             onOpenClick={() => setIsOpenModalOpen(true)}
             onSaveClick={() => setIsSaveModalOpen(true)}
+            onResetCanvas={handleClearCanvas}
           />
         </div>
       </div>
@@ -254,9 +278,15 @@ export default function Whiteboard() {
       />
       <OpenModal
         isOpen={isOpenModalOpen}
-        onClose={() => setIsOpenModalOpen(false)}
+        onClose={handleOpenModalClose}
         currentElements={elements}
         onReplace={handleReplaceElements}
+        elementsFromHash={elementsFromHash}
+      />
+      <ClearCanvasModal
+        isOpen={isClearCanvasModalOpen}
+        onClose={() => setIsClearCanvasModalOpen(false)}
+        onConfirm={handleConfirmClearCanvas}
       />
 
       <Toolbar 
