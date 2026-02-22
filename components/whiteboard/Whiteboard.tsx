@@ -12,6 +12,7 @@ import { useTheme } from '@/app/contexts/ThemeContext';
 import { SaveModal } from './SaveModal';
 import { OpenModal } from './OpenModal';
 import { ClearCanvasModal } from './ClearCanvasModal';
+import { ShortcutsModal } from './ShortcutsModal';
 import { getElementsFromHash } from '@/lib/fileService';
 
 const Canvas = dynamic(() => import('./Canvas').then((mod) => mod.Canvas), {
@@ -30,6 +31,7 @@ export default function Whiteboard() {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isOpenModalOpen, setIsOpenModalOpen] = useState(false);
   const [isClearCanvasModalOpen, setIsClearCanvasModalOpen] = useState(false);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
   const [elementsFromHash, setElementsFromHash] = useState<WhiteboardElement[] | null>(null);
   // Must use same initial value on server and client to avoid hydration mismatch (Next.js reverts on mismatch)
   const [canvasBackground, setCanvasBackground] = useState('bg-gray-50');
@@ -332,12 +334,17 @@ export default function Whiteboard() {
         onClose={() => setIsClearCanvasModalOpen(false)}
         onConfirm={handleConfirmClearCanvas}
       />
+      <ShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
 
       <Toolbar 
         activeTool={activeTool} 
         setActiveTool={setActiveTool} 
         onClearCanvas={handleClearCanvas}
         onImageUpload={handleImageUpload}
+        onHelpClick={() => setIsShortcutsModalOpen(true)}
       />
       <Canvas 
         activeTool={activeTool} 
@@ -416,8 +423,9 @@ export default function Whiteboard() {
           <ShieldCheck size={20} />
         </div>
         <button 
+          onClick={() => setIsShortcutsModalOpen(true)}
           className="flex items-center bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-2 text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-          title="Help?"
+          title="Shortcuts (?)"
         >
           <HelpCircle size={20} />
         </button>

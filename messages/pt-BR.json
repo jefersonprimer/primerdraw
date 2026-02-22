@@ -1,0 +1,23 @@
+{
+  "Sidebar": {
+    "open": "Abrir",
+    "saveTo": "Salvar como...",
+    "exportImage": "Exportar imagem...",
+    "liveCollaboration": "Colaboração ao vivo...",
+    "commandPalette": "Paleta de comandos",
+    "findOnCanvas": "Buscar no canvas",
+    "help": "Ajuda",
+    "resetCanvas": "Limpar o canvas",
+    "excalidrawPlus": "Excalidraw+",
+    "github": "GitHub",
+    "followUs": "Siga-nos",
+    "discordChat": "Chat no Discord",
+    "signUp": "Cadastrar-se",
+    "preferences": "Preferências",
+    "theme": "Tema",
+    "canvasBackground": "Fundo do canvas",
+    "language": "Idioma",
+    "english": "English",
+    "portuguese": "Português"
+  }
+}

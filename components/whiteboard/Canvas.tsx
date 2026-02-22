@@ -13,9 +13,16 @@ const DEFAULT_STROKE_LIGHT = '#000000';
 const DEFAULT_STROKE_DARK = '#ffffff';
 const LEGACY_STROKE_LIGHT = '#1e1e1e';
 const LEGACY_STROKE_DARK = '#e5e5e5';
+
+// Cores que devem inverter com o tema para sempre contrastar com o fundo
+const CONTRAST_STROKE_LIGHT = [DEFAULT_STROKE_LIGHT, LEGACY_STROKE_LIGHT, '#1a1a1a', '#111'];
+const CONTRAST_STROKE_DARK = [DEFAULT_STROKE_DARK, LEGACY_STROKE_DARK, '#e5e5e5', '#eee', '#f5f5f5', '#fafafa'];
+
 function resolveStrokeForTheme(stroke: string, isDark: boolean): string {
-  if (isDark && (stroke === LEGACY_STROKE_LIGHT || stroke === LEGACY_STROKE_DARK)) return DEFAULT_STROKE_DARK;
-  if (!isDark && (stroke === LEGACY_STROKE_DARK || stroke === LEGACY_STROKE_LIGHT)) return DEFAULT_STROKE_LIGHT;
+  if (!stroke || stroke === 'transparent') return stroke;
+  const s = stroke.toLowerCase().trim();
+  if (isDark && CONTRAST_STROKE_LIGHT.some((c) => c === s)) return DEFAULT_STROKE_DARK;
+  if (!isDark && CONTRAST_STROKE_DARK.some((c) => c === s)) return DEFAULT_STROKE_LIGHT;
   return stroke;
 }
 

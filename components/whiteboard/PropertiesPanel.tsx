@@ -51,11 +51,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
   const first = selectedElements.length > 0 ? selectedElements[0] : DEFAULT_ELEMENT as WhiteboardElement;
   const type = selectedElements.length > 0 ? first.type : activeTool as any;
-  // In dark mode, treat legacy default strokes as the first swatch (white); in light, legacy as black
+  // Cores que invertem com o tema: mostrar no painel a cor que está visível no canvas
+  const contrastLight = ['#000000', '#1e1e1e', '#1a1a1a', '#111'];
+  const contrastDark = ['#ffffff', '#e5e5e5', '#eee', '#f5f5f5', '#fafafa'];
+  const s = (first.stroke || '').toLowerCase().trim();
   const strokeForSwatch =
-    isDark && (first.stroke === '#1e1e1e' || first.stroke === '#e5e5e5')
+    isDark && contrastLight.some((c) => c === s)
       ? '#ffffff'
-      : !isDark && (first.stroke === '#e5e5e5' || first.stroke === '#1e1e1e')
+      : !isDark && contrastDark.some((c) => c === s)
         ? '#000000'
         : first.stroke;
 
@@ -90,7 +93,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <div className="relative w-7 h-7 rounded-lg border border-gray-100 dark:border-neutral-700 overflow-hidden cursor-pointer hover:border-gray-300 dark:hover:border-neutral-600 transition-all shadow-sm">
               <input 
                 type="color" 
-                value={first.stroke.startsWith('#') ? first.stroke : (isDark ? '#ffffff' : '#000000')} 
+                value={first.stroke.startsWith('#') ? strokeForSwatch : (isDark ? '#ffffff' : '#000000')} 
                 onChange={(e) => updateElements({ stroke: e.target.value })}
                 className="absolute inset-0 w-[200%] h-[200%] -top-1/2 -left-1/2 cursor-pointer border-none"
               />
