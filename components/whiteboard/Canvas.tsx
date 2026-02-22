@@ -7,6 +7,17 @@ import { WhiteboardElement, db } from '@/lib/db';
 import { Tool } from './Toolbar';
 import Konva from 'konva';
 import useImage from 'use-image';
+import { useTheme } from '@/app/contexts/ThemeContext';
+
+const DEFAULT_STROKE_LIGHT = '#000000';
+const DEFAULT_STROKE_DARK = '#ffffff';
+const LEGACY_STROKE_LIGHT = '#1e1e1e';
+const LEGACY_STROKE_DARK = '#e5e5e5';
+function resolveStrokeForTheme(stroke: string, isDark: boolean): string {
+  if (isDark && (stroke === LEGACY_STROKE_LIGHT || stroke === LEGACY_STROKE_DARK)) return DEFAULT_STROKE_DARK;
+  if (!isDark && (stroke === LEGACY_STROKE_DARK || stroke === LEGACY_STROKE_LIGHT)) return DEFAULT_STROKE_LIGHT;
+  return stroke;
+}
 
 interface CanvasProps {
   activeTool: Tool;
@@ -21,6 +32,7 @@ interface CanvasProps {
   zoom: number;
   stagePosition: { x: number; y: number };
   setStagePosition: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
+  canvasBackground?: string;
 }
 
 const ImageElement = ({ el, activeTool, onDragEnd, onTransformEnd, onClick }: any) => {
@@ -56,8 +68,13 @@ export const Canvas: React.FC<CanvasProps> = ({
   defaultProps,
   zoom,
   stagePosition,
-  setStagePosition
+  setStagePosition,
+  canvasBackground = 'bg-gray-50',
 }) => {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  const resolveStroke = useCallback((s: string) => resolveStrokeForTheme(s, isDark), [isDark]);
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState({ x: 0, y: 0, width: 0, height: 0, visible: false });
@@ -163,7 +180,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     textarea.style.fontSize = `${(defaultProps.fontSize || 20) * scale}px`;
     textarea.style.fontFamily = defaultProps.fontFamily || 'Sans-serif';
     textarea.style.fontWeight = '400';
-    textarea.style.color = defaultProps.stroke || '#1e1e1e';
+    textarea.style.color = defaultProps.stroke || (isDark ? DEFAULT_STROKE_DARK : DEFAULT_STROKE_LIGHT);
     textarea.style.webkitFontSmoothing = 'antialiased';
     textarea.style.mozOsxFontSmoothing = 'grayscale';
     
@@ -227,7 +244,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           text: val,
           width: finalWidth,
           height: finalHeight,
-          stroke: defaultProps.stroke || '#1e1e1e',
+          stroke: defaultProps.stroke || (isDark ? DEFAULT_STROKE_DARK : DEFAULT_STROKE_LIGHT),
           fill: 'transparent',
           strokeWidth: 2,
           rotation: 0,
@@ -314,7 +331,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       type: activeTool as any,
       x: pos.x,
       y: pos.y,
-      stroke: '#1e1e1e',
+      stroke: defaultProps.stroke ?? (isDark ? DEFAULT_STROKE_DARK : DEFAULT_STROKE_LIGHT),
       fill: 'transparent',
       strokeWidth: 2,
       rotation: 0,
@@ -779,7 +796,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [saveHistory]);
 
   return (
-    <div className="w-full h-screen bg-gray-50 overflow-hidden">
+    <div className={`w-full h-screen ${canvasBackground} overflow-hidden`}>
       <Stage
         width={stageSize.width} height={stageSize.height}
         onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
@@ -796,7 +813,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         <Layer>
           {elements.map((el) => {
             const commonProps: any = {
-              id: el.id, x: el.x, y: el.y, stroke: el.stroke, strokeWidth: el.strokeWidth,
+              id: el.id, x: el.x, y: el.y, stroke: resolveStroke(el.stroke), strokeWidth: el.strokeWidth,
               fill: el.fill, rotation: el.rotation, opacity: el.opacity ?? 1,
               dash: getDash(el.strokeStyle),
               lineJoin: el.edges === 'round' ? 'round' : 'miter',
@@ -840,9 +857,9 @@ export const Canvas: React.FC<CanvasProps> = ({
               const points = el.points || [];
               // Use tension for curved arrows (6 points)
               const tension = points.length === 6 ? 0.5 : 0;
-              return <Arrow key={el.id} {...commonProps} points={points} fill={el.stroke} pointerAtEnding={el.arrowheads} tension={tension} />;
+              return <Arrow key={el.id} {...commonProps} points={points} fill={resolveStroke(el.stroke)} pointerAtEnding={el.arrowheads} tension={tension} />;
             }
-            if (el.type === 'text') return <Text key={el.id} {...commonProps} strokeWidth={0} fill={el.stroke} text={el.text ?? ''} fontSize={el.fontSize ?? 20} fontFamily={el.fontFamily ?? 'Sans-serif'} fontStyle="normal" lineHeight={1.2} align={el.textAlign ?? 'left'} width={el.width ?? 0} height={el.height ?? 0} onDblClick={(e) => handleTextInput(el.x, el.y, el.id, el.text ?? '')} />;
+            if (el.type === 'text') return <Text key={el.id} {...commonProps} strokeWidth={0} fill={resolveStroke(el.stroke)} text={el.text ?? ''} fontSize={el.fontSize ?? 20} fontFamily={el.fontFamily ?? 'Sans-serif'} fontStyle="normal" lineHeight={1.2} align={el.textAlign ?? 'left'} width={el.width ?? 0} height={el.height ?? 0} onDblClick={(e) => handleTextInput(el.x, el.y, el.id, el.text ?? '')} />;
             if (el.type === 'image') return <ImageElement key={el.id} el={el} activeTool={activeTool} {...commonProps} />;
             return null;
           })}
@@ -852,7 +869,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               {newElement.type === 'rectangle' && (
                 <Rect
                   x={newElement.x} y={newElement.y} width={newElement.width ?? 0} height={newElement.height ?? 0}
-                  stroke={newElement.stroke} strokeWidth={newElement.strokeWidth}
+                  stroke={resolveStroke(newElement.stroke)} strokeWidth={newElement.strokeWidth}
                   fill={newElement.fill} opacity={newElement.opacity ?? 0.5}
                   dash={getDash(newElement.strokeStyle)}
                   cornerRadius={newElement.edges === 'round' ? 10 : 0}
@@ -862,7 +879,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 <Ellipse
                   x={newElement.x + (newElement.width ?? 0) / 2} y={newElement.y + (newElement.height ?? 0) / 2} 
                   radiusX={Math.abs((newElement.width ?? 0) / 2)} radiusY={Math.abs((newElement.height ?? 0) / 2)}
-                  stroke={newElement.stroke} strokeWidth={newElement.strokeWidth}
+                  stroke={resolveStroke(newElement.stroke)} strokeWidth={newElement.strokeWidth}
                   fill={newElement.fill} opacity={newElement.opacity ?? 0.5}
                   dash={getDash(newElement.strokeStyle)}
                 />
@@ -871,7 +888,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 <RegularPolygon
                   x={newElement.x + (newElement.width ?? 0) / 2} y={newElement.y + (newElement.height ?? 0) / 2} 
                   sides={3} radius={Math.abs(newElement.width ?? 0) / 2} scaleY={Math.abs((newElement.height ?? 0) / (Math.max(Math.abs(newElement.width ?? 0), 1)))}
-                  stroke={newElement.stroke} strokeWidth={newElement.strokeWidth}
+                  stroke={resolveStroke(newElement.stroke)} strokeWidth={newElement.strokeWidth}
                   fill={newElement.fill} opacity={newElement.opacity ?? 0.5}
                   dash={getDash(newElement.strokeStyle)}
                 />
@@ -880,7 +897,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 <RegularPolygon
                   x={newElement.x + (newElement.width ?? 0) / 2} y={newElement.y + (newElement.height ?? 0) / 2} 
                   sides={4} radius={Math.abs(newElement.width ?? 0) / 2} scaleY={Math.abs((newElement.height ?? 0) / (Math.max(Math.abs(newElement.width ?? 0), 1)))}
-                  stroke={newElement.stroke} strokeWidth={newElement.strokeWidth}
+                  stroke={resolveStroke(newElement.stroke)} strokeWidth={newElement.strokeWidth}
                   fill={newElement.fill} opacity={newElement.opacity ?? 0.5}
                   dash={getDash(newElement.strokeStyle)}
                 />
@@ -888,7 +905,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               {(newElement.type === 'line' || newElement.type === 'pencil' || newElement.type === 'arrow') && (
                 <Line
                   x={newElement.x} y={newElement.y} points={newElement.points || []}
-                  stroke={newElement.stroke} strokeWidth={newElement.strokeWidth}
+                  stroke={resolveStroke(newElement.stroke)} strokeWidth={newElement.strokeWidth}
                   opacity={newElement.opacity ?? 0.5}
                   dash={getDash(newElement.strokeStyle)}
                   tension={newElement.type === 'pencil' ? 0.5 : 0}

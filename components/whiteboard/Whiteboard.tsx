@@ -8,6 +8,7 @@ import { db, WhiteboardElement } from '@/lib/db';
 import { useHistoryState } from '@/lib/useHistoryState';
 import { Plus, Minus, Undo2, Redo2, ShieldCheck, HelpCircle, Menu, X } from 'lucide-react';
 import Sidebar from './Sidebar';
+import { useTheme } from '@/app/contexts/ThemeContext';
 import { SaveModal } from './SaveModal';
 import { OpenModal } from './OpenModal';
 import { ClearCanvasModal } from './ClearCanvasModal';
@@ -53,6 +54,10 @@ export default function Whiteboard() {
     elementsRef.current = elements;
   }, [elements]);
 
+  const { resolvedTheme } = useTheme();
+  const LIGHT_BG = ['bg-white', 'bg-gray-50', 'bg-neutral-100', 'bg-neutral-200', 'bg-neutral-300', 'bg-yellow-100'];
+  const DARK_BG = ['bg-neutral-900', 'bg-gray-800', 'bg-slate-900', 'bg-zinc-900', 'bg-gray-950', 'bg-stone-950'];
+
   // Load saved view state from localStorage
   useEffect(() => {
     const savedZoom = localStorage.getItem('whiteboard-zoom');
@@ -78,12 +83,33 @@ export default function Whiteboard() {
     }
 
     if (savedBackground) {
-      console.log('[Whiteboard] Load: reading background from localStorage:', savedBackground);
       setCanvasBackground(savedBackground);
     } else {
-      console.log('[Whiteboard] Load: no saved background in localStorage');
+      // No saved background: use theme-appropriate default
+      const isDark = document.documentElement.classList.contains('dark');
+      setCanvasBackground(isDark ? 'bg-neutral-900' : 'bg-gray-50');
+      localStorage.setItem('whiteboard-background', isDark ? 'bg-neutral-900' : 'bg-gray-50');
     }
   }, []);
+
+  // Sync canvas background when theme changes (e.g. light bg in dark mode → switch to dark default)
+  useEffect(() => {
+    if (resolvedTheme === 'dark' && LIGHT_BG.includes(canvasBackground)) {
+      setCanvasBackground('bg-neutral-900');
+      localStorage.setItem('whiteboard-background', 'bg-neutral-900');
+    } else if (resolvedTheme === 'light' && DARK_BG.includes(canvasBackground)) {
+      setCanvasBackground('bg-gray-50');
+      localStorage.setItem('whiteboard-background', 'bg-gray-50');
+    }
+  }, [resolvedTheme, canvasBackground]);
+
+  // Default stroke: black in light mode, white in dark mode (figures, arrow, line, text visible on canvas)
+  useEffect(() => {
+    setDefaultProps((prev) => ({
+      ...prev,
+      stroke: resolvedTheme === 'dark' ? '#ffffff' : '#000000',
+    }));
+  }, [resolvedTheme]);
 
   // Save zoom to localStorage when it changes
   useEffect(() => {
@@ -94,11 +120,6 @@ export default function Whiteboard() {
   useEffect(() => {
     localStorage.setItem('whiteboard-position', JSON.stringify(stagePosition));
   }, [stagePosition]);
-
-  // Debug: log whenever canvasBackground state changes
-  useEffect(() => {
-    console.log('[Whiteboard] State: canvasBackground is now', canvasBackground);
-  }, [canvasBackground]);
 
   useEffect(() => {
     const handleUpdateZoom = (e: any) => {
@@ -248,11 +269,9 @@ export default function Whiteboard() {
   const selectedElements = elements.filter(el => selectedIds.includes(el.id));
 
   const handleCanvasBackgroundChange = useCallback((color: string) => {
-    console.log('[Whiteboard] Click: changing background to', color);
     setCanvasBackground(color);
     if (typeof window !== 'undefined') {
       localStorage.setItem('whiteboard-background', color);
-      console.log('[Whiteboard] Click: saved to localStorage. Current value:', localStorage.getItem('whiteboard-background'));
     }
   }, []);
 
@@ -262,7 +281,7 @@ export default function Whiteboard() {
       <div className="fixed top-4 left-4 z-[100]">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-2.5 bg-white border border-gray-200 rounded-lg shadow-lg hover:bg-gray-50 text-gray-700 transition-all active:scale-95"
+          className="p-2.5 bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-neutral-800 text-gray-700 dark:text-white transition-all active:scale-95"
           title="Menu"
         >
           {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -333,6 +352,7 @@ export default function Whiteboard() {
         zoom={zoom}
         stagePosition={stagePosition}
         setStagePosition={setStagePosition}
+        canvasBackground={canvasBackground}
       />
       {selectedIds.length > 0 && (
         <PropertiesPanel 
@@ -346,20 +366,20 @@ export default function Whiteboard() {
       {/* Bottom Left Controls */}
       <div className="fixed bottom-4 left-4 flex items-center gap-2 z-50">
         {/* Zoom Control */}
-        <div className="flex items-center bg-white border border-gray-200 rounded-lg shadow-lg p-1 gap-2">
+        <div className="flex items-center bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-1 gap-2">
           <button
             onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
-            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition-colors"
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-white transition-colors"
             title="Zoom Out"
           >
             <Minus size={16} />
           </button>
-          <div className="w-12 text-center text-sm font-medium text-gray-700 select-none">
+          <div className="w-12 text-center text-sm font-medium text-gray-700 dark:text-white select-none">
             {Math.round(zoom * 100)}%
           </div>
           <button
             onClick={() => setZoom(Math.min(5, zoom + 0.1))}
-            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition-colors"
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-white transition-colors"
             title="Zoom In"
           >
             <Plus size={16} />
@@ -367,11 +387,11 @@ export default function Whiteboard() {
         </div>
 
         {/* Undo/Redo Control */}
-        <div className="flex items-center bg-white border border-gray-200 rounded-lg shadow-lg p-1 gap-1">
+        <div className="flex items-center bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-1 gap-1">
           <button
             onClick={undo}
             disabled={!canUndo}
-            className={`p-1.5 rounded-md transition-colors ${canUndo ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'}`}
+            className={`p-1.5 rounded-md transition-colors ${canUndo ? 'text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800' : 'text-gray-300 dark:text-neutral-500 cursor-not-allowed'}`}
             title="Undo (Ctrl+Z)"
           >
             <Undo2 size={16} />
@@ -379,7 +399,7 @@ export default function Whiteboard() {
           <button
             onClick={redo}
             disabled={!canRedo}
-            className={`p-1.5 rounded-md transition-colors ${canRedo ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'}`}
+            className={`p-1.5 rounded-md transition-colors ${canRedo ? 'text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800' : 'text-gray-300 dark:text-neutral-500 cursor-not-allowed'}`}
             title="Redo (Ctrl+R / Ctrl+Y)"
           >
             <Redo2 size={16} />
@@ -390,13 +410,13 @@ export default function Whiteboard() {
       {/* Bottom Right Controls */}
       <div className="fixed bottom-4 right-4 flex items-center gap-2 z-50">
         <div 
-          className="flex items-center bg-white border border-gray-200 rounded-lg shadow-lg p-2 text-green-600 cursor-help"
+          className="flex items-center bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-2 text-green-600 cursor-help"
           title="seus desenhos sao salvos em seu proprio navegador, eles nao sao mandados para nossos servidores"
         >
           <ShieldCheck size={20} />
         </div>
         <button 
-          className="flex items-center bg-white border border-gray-200 rounded-lg shadow-lg p-2 text-gray-600 hover:bg-gray-100 transition-colors"
+          className="flex items-center bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-2 text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
           title="Help?"
         >
           <HelpCircle size={20} />

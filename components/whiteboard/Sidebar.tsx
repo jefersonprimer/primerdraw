@@ -11,11 +11,12 @@ import {
   Twitter,
   MessageCircle,
   SlidersHorizontal,
-  Monitor,
   Sun,
   Moon,
+  Monitor,
   LogIn,
-} from "lucide-react"
+} from "lucide-react";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 type SidebarProps = {
   onOpenClick?: () => void;
@@ -26,9 +27,11 @@ type SidebarProps = {
 }
 
 export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canvasBackground = 'bg-gray-50', onCanvasBackgroundChange }: SidebarProps) {
+  const { theme, setTheme, resolvedTheme } = useTheme();
+
   return (
-    <div className="w-60 max-h-[calc(100vh-80px)] bg-white border border-neutral-200 rounded-xl p-3 flex flex-col text-sm overflow-y-auto shadow-2xl">
-      
+    <div className="w-60 max-h-[calc(100vh-80px)] bg-white dark:bg-[#1C1C1C] border border-neutral-200 dark:border-neutral-800 rounded-xl p-3 flex flex-col text-sm overflow-y-auto shadow-2xl">
+
       {/* Top Section */}
       <div className="space-y-1">
 
@@ -59,7 +62,7 @@ export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canva
       {/* Preferences */}
       <div className="space-y-3">
 
-        <div className="flex items-center justify-between px-2 py-1 rounded-md text-[#1b1b1f] hover:bg-neutral-100 cursor-pointer">
+        <div className="flex items-center justify-between px-2 py-1 rounded-md text-[#1b1b1f] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer">
           <div className="flex items-center gap-2">
             <SlidersHorizontal size={16} />
             <span>Preferences</span>
@@ -68,18 +71,18 @@ export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canva
 
         {/* Theme */}
         <div className="flex items-center justify-between px-2">
-          <p className="text-sm text-[#1b1b1f] mb-2">Theme</p>
+          <p className="text-sm text-[#1b1b1f] dark:text-white mb-2">Theme</p>
 
-          <div className="flex rounded-xl p-1 border border-[#f1f0ff]">
-            <ThemeButton active icon={<Sun size={16} />} />
-            <ThemeButton icon={<Moon size={16} />} />
-            <ThemeButton icon={<Monitor size={16} />} />
+          <div className="flex rounded-xl p-1 border border-[#f1f0ff] dark:border-neutral-800">
+            <ThemeButton active={theme === 'light'} icon={<Sun size={16} />} onClick={() => setTheme('light')} />
+            <ThemeButton active={theme === 'dark'} icon={<Moon size={16} />} onClick={() => setTheme('dark')} />
+            <ThemeButton active={theme === 'system'} icon={<Monitor size={16} />} onClick={() => setTheme('system')} />
           </div>
         </div>
 
         {/* Language */}
         <div className="px-2">
-          <select className="w-full bg-neutral-100 rounded-md px-3 py-2 text-sm text-[#1b1b1f] outline-none focus:ring-2 focus:ring-blue-400">
+          <select className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-md px-3 py-2 text-sm text-[#1b1b1f] dark:text-white outline-none focus:ring-2 focus:ring-blue-400">
             <option>English</option>
             <option>Português</option>
           </select>
@@ -87,16 +90,26 @@ export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canva
 
         {/* Canvas background */}
         <div className="px-2">
-          <p className="text-xs text-[#1b1b1f] mb-2">Canvas background</p>
-
-          <div className="flex gap-2 flex-wrap">
-            <ColorSwatch color="bg-white" active={canvasBackground === 'bg-white'} onClick={() => onCanvasBackgroundChange?.('bg-white')} />
-            <ColorSwatch color="bg-gray-50" active={canvasBackground === 'bg-gray-50'} onClick={() => onCanvasBackgroundChange?.('bg-gray-50')} />
-            <ColorSwatch color="bg-neutral-100" active={canvasBackground === 'bg-neutral-100'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-100')} />
-            <ColorSwatch color="bg-neutral-200" active={canvasBackground === 'bg-neutral-200'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-200')} />
-            <ColorSwatch color="bg-neutral-300" active={canvasBackground === 'bg-neutral-300'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-300')} />
-            <ColorSwatch color="bg-yellow-100" active={canvasBackground === 'bg-yellow-100'} onClick={() => onCanvasBackgroundChange?.('bg-yellow-100')} />
-          </div>
+          <p className="text-xs text-[#1b1b1f] dark:text-white mb-2">Canvas background</p>
+          {resolvedTheme === 'light' ? (
+            <div className="flex gap-2 flex-wrap">
+              <ColorSwatch color="bg-white" active={canvasBackground === 'bg-white'} onClick={() => onCanvasBackgroundChange?.('bg-white')} />
+              <ColorSwatch color="bg-gray-50" active={canvasBackground === 'bg-gray-50'} onClick={() => onCanvasBackgroundChange?.('bg-gray-50')} />
+              <ColorSwatch color="bg-neutral-100" active={canvasBackground === 'bg-neutral-100'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-100')} />
+              <ColorSwatch color="bg-neutral-200" active={canvasBackground === 'bg-neutral-200'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-200')} />
+              <ColorSwatch color="bg-neutral-300" active={canvasBackground === 'bg-neutral-300'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-300')} />
+              <ColorSwatch color="bg-yellow-100" active={canvasBackground === 'bg-yellow-100'} onClick={() => onCanvasBackgroundChange?.('bg-yellow-100')} />
+            </div>
+          ) : (
+            <div className="flex gap-2 flex-wrap">
+              <ColorSwatch color="bg-neutral-900" active={canvasBackground === 'bg-neutral-900'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-900')} />
+              <ColorSwatch color="bg-gray-800" active={canvasBackground === 'bg-gray-800'} onClick={() => onCanvasBackgroundChange?.('bg-gray-800')} />
+              <ColorSwatch color="bg-slate-900" active={canvasBackground === 'bg-slate-900'} onClick={() => onCanvasBackgroundChange?.('bg-slate-900')} />
+              <ColorSwatch color="bg-zinc-900" active={canvasBackground === 'bg-zinc-900'} onClick={() => onCanvasBackgroundChange?.('bg-zinc-900')} />
+              <ColorSwatch color="bg-gray-950" active={canvasBackground === 'bg-gray-950'} onClick={() => onCanvasBackgroundChange?.('bg-gray-950')} />
+              <ColorSwatch color="bg-stone-950" active={canvasBackground === 'bg-stone-950'} onClick={() => onCanvasBackgroundChange?.('bg-stone-950')} />
+            </div>
+          )}
         </div>
 
       </div>
@@ -122,7 +135,7 @@ function MenuItem({ icon, label, shortcut, highlight, isResetCanvas, onClick }: 
       onClick={onClick}
       className={`
         flex items-center justify-between px-2 py-2 rounded-md cursor-pointer
-        hover:bg-neutral-100 text-[#1b1b1f]
+        hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[#1b1b1f] dark:text-white
         ${highlight ? "text-blue-400 font-medium" : ""}
         ${isResetCanvas ? "hover:text-red-600 font-medium" : ""}
       `}
@@ -142,16 +155,18 @@ function MenuItem({ icon, label, shortcut, highlight, isResetCanvas, onClick }: 
 type ThemeButtonProps = {
   icon: React.ReactNode
   active?: boolean
+  onClick?: () => void
 }
 
-function ThemeButton({ icon, active }: ThemeButtonProps) {
+function ThemeButton({ icon, active, onClick }: ThemeButtonProps) {
   return (
     <button
+      onClick={onClick}
       className={`
         w-6 h-6 flex items-center justify-center rounded-lg transition
         ${active 
           ? "bg-blue-400 text-white" 
-          : "text-neutral-600 hover:bg-neutral-200"
+          : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800"
         }
       `}
     >
@@ -175,5 +190,5 @@ function ColorSwatch({ color, active, onClick }: { color: string; active?: boole
 }
 
 function Divider() {
-  return <div className="my-3 border-t border-neutral-200" />
+  return <div className="my-3 border-t border-neutral-200 dark:border-neutral-800" />
 }

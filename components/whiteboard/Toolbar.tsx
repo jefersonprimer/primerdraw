@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
-import { Hand, MousePointer2, Square, Circle, Type, Minus, Triangle, ArrowRight, Pencil, Image as ImageIcon, Eraser, Diamond, Trash2 } from 'lucide-react';
+import { Hand, MousePointer2, Square, Circle, Type, Minus, Triangle, ArrowRight, Pencil, Image as ImageIcon, Eraser, Diamond, Trash2, Sun, Moon } from 'lucide-react';
+import { useTheme } from '@/app/contexts/ThemeContext';
 
 export type Tool = 'hand' | 'select' | 'rectangle' | 'diamond' | 'triangle' | 'circle' | 'arrow' | 'line' | 'pencil' | 'text' | 'image' | 'eraser';
 
@@ -32,6 +35,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onImageUpload
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { resolvedTheme, setTheme } = useTheme();
+
+  const handleThemeToggle = () => {
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  };
 
   const handleClick = (toolId: Tool) => {
     if (toolId === 'image') {
@@ -42,17 +50,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-lg shadow-lg p-1 flex gap-1 z-50 overflow-x-auto max-w-[95vw] items-center">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-1 flex gap-1 z-50 overflow-x-auto max-w-[95vw] items-center">
       {tools.map((tool) => (
         <button
           key={tool.id}
           onClick={() => handleClick(tool.id)}
           className={`p-2 rounded-md transition-colors flex-shrink-0 ${
             activeTool === tool.id && !tool.isAction
-              ? 'bg-blue-100 text-blue-600'
+              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
               : tool.isAction 
-                ? 'hover:bg-red-50 text-gray-600 hover:text-red-500'
-                : 'hover:bg-gray-100 text-gray-600'
+                ? 'hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-600 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400'
+                : 'hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300'
           }`}
           title={tool.label}
         >
@@ -60,10 +68,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </button>
       ))}
 
-      <div className="flex gap-1 border-l pl-1 ml-1">
+      <div className="flex gap-1 border-l border-gray-200 dark:border-neutral-700 pl-1 ml-1">
+        <button
+          onClick={handleThemeToggle}
+          className="p-2 rounded-md transition-colors text-gray-600 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800"
+          title={resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+        >
+          {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
         <button
           onClick={onClearCanvas}
-          className="p-2 rounded-md transition-colors text-gray-600 hover:bg-red-50 hover:text-red-500"
+          className="p-2 rounded-md transition-colors text-gray-600 dark:text-neutral-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 dark:hover:text-red-400"
           title="Clear Canvas"
         >
           <Trash2 size={18} />

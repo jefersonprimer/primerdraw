@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { WhiteboardElement } from '@/lib/db';
+import { useTheme } from '@/app/contexts/ThemeContext';
 import { 
   Square, Minus, Type, Layers, ChevronUp, ChevronDown, 
   ArrowUp, ArrowDown, AlignLeft, AlignCenter, AlignRight,
@@ -16,11 +17,12 @@ interface PropertiesPanelProps {
   onLayerChange: (action: 'front' | 'back' | 'forward' | 'backward') => void;
 }
 
-const STROKE_COLORS = ['#1e1e1e', '#e03131', '#2f9e41', '#1971c2', '#f08c00'];
+const STROKE_COLORS_LIGHT = ['#000000', '#e03131', '#2f9e41', '#1971c2', '#f08c00'];
+const STROKE_COLORS_DARK = ['#ffffff', '#e03131', '#2f9e41', '#1971c2', '#f08c00'];
 const BG_COLORS = ['transparent', '#ffec99', '#b2f2bb', '#a5d8ff', '#ffc9c9'];
 
 const DEFAULT_ELEMENT: Partial<WhiteboardElement> = {
-  stroke: '#1e1e1e',
+  stroke: '#000000',
   fill: 'transparent',
   strokeWidth: 2,
   strokeStyle: 'solid',
@@ -40,16 +42,26 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   updateElements,
   onLayerChange 
 }) => {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  const STROKE_COLORS = isDark ? STROKE_COLORS_DARK : STROKE_COLORS_LIGHT;
   const isDrawingTool = ['rectangle', 'circle', 'triangle', 'line', 'arrow', 'pencil', 'text', 'image'].includes(activeTool);
   
   if (selectedElements.length === 0 && !isDrawingTool) return null;
 
   const first = selectedElements.length > 0 ? selectedElements[0] : DEFAULT_ELEMENT as WhiteboardElement;
   const type = selectedElements.length > 0 ? first.type : activeTool as any;
+  // In dark mode, treat legacy default strokes as the first swatch (white); in light, legacy as black
+  const strokeForSwatch =
+    isDark && (first.stroke === '#1e1e1e' || first.stroke === '#e5e5e5')
+      ? '#ffffff'
+      : !isDark && (first.stroke === '#e5e5e5' || first.stroke === '#1e1e1e')
+        ? '#000000'
+        : first.stroke;
 
   const Section = ({ title, children, className = "" }: { title: string; children: React.ReactNode, className?: string }) => (
     <div className={`mb-5 ${className}`}>
-      <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">{title}</h4>
+      <h4 className="text-[11px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest mb-2.5">{title}</h4>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
@@ -60,7 +72,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const isImage = type === 'image';
 
   return (
-    <div className="fixed left-6 top-1/2 -translate-y-1/2 w-64 bg-white border border-gray-100 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-5 z-50 max-h-[85vh] overflow-y-auto custom-scrollbar transition-all duration-300">
+    <div className="fixed left-6 top-1/2 -translate-y-1/2 w-64 bg-white dark:bg-[#1C1C1C] border border-gray-100 dark:border-neutral-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] p-5 z-50 max-h-[85vh] overflow-y-auto custom-scrollbar transition-all duration-300">
       
       {/* STROKE COLORS */}
       {(isShape || isPencil || isText) && (
@@ -69,16 +81,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             {STROKE_COLORS.map(c => (
               <button
                 key={c}
-                className={`w-7 h-7 rounded-lg border transition-all ${first.stroke === c ? 'ring-2 ring-blue-500 ring-offset-2 scale-110 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
+                className={`w-7 h-7 rounded-lg border transition-all ${strokeForSwatch === c ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-[#1C1C1C] scale-110 shadow-sm' : 'border-gray-100 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'}`}
                 style={{ backgroundColor: c }}
                 onClick={() => updateElements({ stroke: c })}
               />
             ))}
-            <div className="w-[1.5px] h-5 bg-gray-200 mx-1 flex-shrink-0" />
-            <div className="relative w-7 h-7 rounded-lg border border-gray-100 overflow-hidden cursor-pointer hover:border-gray-300 transition-all shadow-sm">
+            <div className="w-[1.5px] h-5 bg-gray-200 dark:bg-neutral-600 mx-1 flex-shrink-0" />
+            <div className="relative w-7 h-7 rounded-lg border border-gray-100 dark:border-neutral-700 overflow-hidden cursor-pointer hover:border-gray-300 dark:hover:border-neutral-600 transition-all shadow-sm">
               <input 
                 type="color" 
-                value={first.stroke.startsWith('#') ? first.stroke : '#000000'} 
+                value={first.stroke.startsWith('#') ? first.stroke : (isDark ? '#ffffff' : '#000000')} 
                 onChange={(e) => updateElements({ stroke: e.target.value })}
                 className="absolute inset-0 w-[200%] h-[200%] -top-1/2 -left-1/2 cursor-pointer border-none"
               />
@@ -94,15 +106,15 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             {BG_COLORS.map((c, i) => (
               <button
                 key={c + i}
-                className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-all ${first.fill === c ? 'ring-2 ring-blue-500 ring-offset-2 scale-110 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
+                className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-all ${first.fill === c ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-[#1C1C1C] scale-110 shadow-sm' : 'border-gray-100 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'}`}
                 style={{ backgroundColor: c === 'transparent' ? 'white' : c }}
                 onClick={() => updateElements({ fill: c })}
               >
-                {c === 'transparent' && <Minus size={14} className="rotate-45 text-gray-400" />}
+                {c === 'transparent' && <Minus size={14} className="rotate-45 text-gray-400 dark:text-neutral-500" />}
               </button>
             ))}
-            <div className="w-[1.5px] h-5 bg-gray-200 mx-1 flex-shrink-0" />
-            <div className="relative w-7 h-7 rounded-lg border border-gray-100 overflow-hidden cursor-pointer hover:border-gray-300 transition-all shadow-sm">
+            <div className="w-[1.5px] h-5 bg-gray-200 dark:bg-neutral-600 mx-1 flex-shrink-0" />
+            <div className="relative w-7 h-7 rounded-lg border border-gray-100 dark:border-neutral-700 overflow-hidden cursor-pointer hover:border-gray-300 dark:hover:border-neutral-600 transition-all shadow-sm">
               <input 
                 type="color" 
                 value={first.fill !== 'transparent' && first.fill.startsWith('#') ? first.fill : '#ffffff'} 
@@ -121,7 +133,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <button
               key={w}
               onClick={() => updateElements({ strokeWidth: w })}
-              className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.strokeWidth === w ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'border-gray-50 bg-gray-50/30 hover:bg-gray-100 hover:border-gray-200'}`}
+              className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.strokeWidth === w ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
             >
               <div style={{ height: (i + 1) * 2, width: '65%', backgroundColor: 'currentColor', borderRadius: 4 }} />
             </button>
@@ -136,7 +148,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <button
               key={s}
               onClick={() => updateElements({ strokeStyle: s })}
-              className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.strokeStyle === s ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'border-gray-50 bg-gray-50/30 hover:bg-gray-100 hover:border-gray-200'}`}
+              className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.strokeStyle === s ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
             >
               <div className={`w-3/4 h-0 ${s === 'dashed' ? 'border-t-2 border-dashed' : s === 'dotted' ? 'border-t-2 border-dotted' : 'border-t-2'} border-current`} />
             </button>
@@ -151,7 +163,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <button
               key={s}
               onClick={() => updateElements({ sloppiness: s })}
-              className={`w-11 h-11 rounded-xl border flex items-center justify-center text-xs font-bold transition-all ${first.sloppiness === s ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'border-gray-50 bg-gray-50/30 hover:bg-gray-100 hover:border-gray-200'}`}
+              className={`w-11 h-11 rounded-xl border flex items-center justify-center text-xs font-bold transition-all ${first.sloppiness === s ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
             >
               {s === 0 ? 'S' : s === 1 ? 'M' : 'L'}
             </button>
@@ -166,7 +178,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <button
               key={e}
               onClick={() => updateElements({ edges: e })}
-              className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.edges === e ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'border-gray-50 bg-gray-50/30 hover:bg-gray-100 hover:border-gray-200'}`}
+              className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.edges === e ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
             >
               {e === 'sharp' ? <SquareIcon size={18} /> : <CircleIcon size={18} />}
             </button>
@@ -182,7 +194,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <button
                 key={at}
                 onClick={() => updateElements({ arrowType: at })}
-                className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.arrowType === at ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'border-gray-50 bg-gray-50/30 hover:bg-gray-100 hover:border-gray-200'}`}
+                className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.arrowType === at ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
               >
                 {at === 'simple' ? <ArrowRight size={20} /> : at === 'double' ? <Maximize size={20} /> : <CircleIcon size={18} />}
               </button>
@@ -193,7 +205,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <button
                 key={String(ah)}
                 onClick={() => updateElements({ arrowheads: ah })}
-                className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.arrowheads === ah ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'border-gray-50 bg-gray-50/30 hover:bg-gray-100 hover:border-gray-200'}`}
+                className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.arrowheads === ah ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
               >
                 {ah ? <ArrowRight size={20} /> : <Minus size={20} />}
               </button>
@@ -210,7 +222,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <button
                 key={f}
                 onClick={() => updateElements({ fontFamily: f })}
-                className={`px-3 py-2 text-[11px] font-medium rounded-xl border transition-all ${first.fontFamily === f ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'border-gray-50 bg-gray-50/30 hover:bg-gray-100 hover:border-gray-200'}`}
+                className={`px-3 py-2 text-[11px] font-medium rounded-xl border transition-all ${first.fontFamily === f ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
               >
                 {f}
               </button>
@@ -221,7 +233,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <button
                 key={s}
                 onClick={() => updateElements({ fontSize: s })}
-                className={`w-11 h-11 rounded-xl border flex items-center justify-center text-xs font-semibold transition-all ${first.fontSize === s ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'border-gray-50 bg-gray-50/30 hover:bg-gray-100 hover:border-gray-200'}`}
+                className={`w-11 h-11 rounded-xl border flex items-center justify-center text-xs font-semibold transition-all ${first.fontSize === s ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
               >
                 {s}
               </button>
@@ -232,7 +244,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <button
                 key={a}
                 onClick={() => updateElements({ textAlign: a })}
-                className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.textAlign === a ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'border-gray-50 bg-gray-50/30 hover:bg-gray-100 hover:border-gray-200'}`}
+                className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${first.textAlign === a ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
               >
                 {a === 'left' ? <AlignLeft size={18} /> : a === 'center' ? <AlignCenter size={18} /> : <AlignRight size={18} />}
               </button>
@@ -247,7 +259,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           type="range" min="0" max="100" step="1" 
           value={Math.round(first.opacity * 100)} 
           onChange={(e) => updateElements({ opacity: parseInt(e.target.value) / 100 })}
-          className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          className="w-full h-2 bg-gray-100 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
         />
       </Section>
 
