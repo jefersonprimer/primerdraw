@@ -30,6 +30,8 @@ export default function Whiteboard() {
   const [isOpenModalOpen, setIsOpenModalOpen] = useState(false);
   const [isClearCanvasModalOpen, setIsClearCanvasModalOpen] = useState(false);
   const [elementsFromHash, setElementsFromHash] = useState<WhiteboardElement[] | null>(null);
+  // Must use same initial value on server and client to avoid hydration mismatch (Next.js reverts on mismatch)
+  const [canvasBackground, setCanvasBackground] = useState('bg-gray-50');
   const [defaultProps, setDefaultProps] = useState<Partial<WhiteboardElement>>({
     stroke: '#1e1e1e',
     fill: 'transparent',
@@ -55,6 +57,7 @@ export default function Whiteboard() {
   useEffect(() => {
     const savedZoom = localStorage.getItem('whiteboard-zoom');
     const savedPosition = localStorage.getItem('whiteboard-position');
+    const savedBackground = localStorage.getItem('whiteboard-background');
     
     if (savedZoom) {
       const zoomValue = parseFloat(savedZoom);
@@ -73,6 +76,13 @@ export default function Whiteboard() {
         // Invalid JSON, ignore
       }
     }
+
+    if (savedBackground) {
+      console.log('[Whiteboard] Load: reading background from localStorage:', savedBackground);
+      setCanvasBackground(savedBackground);
+    } else {
+      console.log('[Whiteboard] Load: no saved background in localStorage');
+    }
   }, []);
 
   // Save zoom to localStorage when it changes
@@ -84,6 +94,11 @@ export default function Whiteboard() {
   useEffect(() => {
     localStorage.setItem('whiteboard-position', JSON.stringify(stagePosition));
   }, [stagePosition]);
+
+  // Debug: log whenever canvasBackground state changes
+  useEffect(() => {
+    console.log('[Whiteboard] State: canvasBackground is now', canvasBackground);
+  }, [canvasBackground]);
 
   useEffect(() => {
     const handleUpdateZoom = (e: any) => {
@@ -231,10 +246,18 @@ export default function Whiteboard() {
   }, [elements, selectedIds, saveHistory]);
 
   const selectedElements = elements.filter(el => selectedIds.includes(el.id));
-  const isDrawingTool = ['rectangle', 'circle', 'triangle', 'diamond', 'line', 'arrow', 'pencil', 'text', 'image'].includes(activeTool);
+
+  const handleCanvasBackgroundChange = useCallback((color: string) => {
+    console.log('[Whiteboard] Click: changing background to', color);
+    setCanvasBackground(color);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('whiteboard-background', color);
+      console.log('[Whiteboard] Click: saved to localStorage. Current value:', localStorage.getItem('whiteboard-background'));
+    }
+  }, []);
 
   return (
-    <div className="relative w-full h-screen bg-gray-50 overflow-hidden">
+    <div className={`relative w-full h-screen ${canvasBackground} overflow-hidden`}>
       {/* Menu Button */}
       <div className="fixed top-4 left-4 z-[100]">
         <button
@@ -266,6 +289,8 @@ export default function Whiteboard() {
             onOpenClick={() => setIsOpenModalOpen(true)}
             onSaveClick={() => setIsSaveModalOpen(true)}
             onResetCanvas={handleClearCanvas}
+            canvasBackground={canvasBackground}
+            onCanvasBackgroundChange={handleCanvasBackgroundChange}
           />
         </div>
       </div>
@@ -309,10 +334,10 @@ export default function Whiteboard() {
         stagePosition={stagePosition}
         setStagePosition={setStagePosition}
       />
-      {(selectedIds.length > 0 || isDrawingTool) && (
+      {selectedIds.length > 0 && (
         <PropertiesPanel 
           activeTool={activeTool}
-          selectedElements={selectedElements.length > 0 ? selectedElements : [defaultProps as WhiteboardElement]}
+          selectedElements={selectedElements}
           updateElements={updateElements}
           onLayerChange={handleLayerChange}
         />

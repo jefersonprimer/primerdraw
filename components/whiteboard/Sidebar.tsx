@@ -21,9 +21,11 @@ type SidebarProps = {
   onOpenClick?: () => void;
   onSaveClick?: () => void;
   onResetCanvas?: () => void;
+  canvasBackground?: string;
+  onCanvasBackgroundChange?: (color: string) => void;
 }
 
-export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas }: SidebarProps) {
+export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canvasBackground = 'bg-gray-50', onCanvasBackgroundChange }: SidebarProps) {
   return (
     <div className="w-60 max-h-[calc(100vh-80px)] bg-white border border-neutral-200 rounded-xl p-3 flex flex-col text-sm overflow-y-auto shadow-2xl">
       
@@ -87,12 +89,13 @@ export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas }: Sid
         <div className="px-2">
           <p className="text-xs text-[#1b1b1f] mb-2">Canvas background</p>
 
-          <div className="flex gap-2">
-            <ColorSwatch color="bg-white" active />
-            <ColorSwatch color="bg-neutral-200" />
-            <ColorSwatch color="bg-neutral-300" />
-            <ColorSwatch color="bg-yellow-100" />
-            <ColorSwatch color="bg-neutral-100" />
+          <div className="flex gap-2 flex-wrap">
+            <ColorSwatch color="bg-white" active={canvasBackground === 'bg-white'} onClick={() => onCanvasBackgroundChange?.('bg-white')} />
+            <ColorSwatch color="bg-gray-50" active={canvasBackground === 'bg-gray-50'} onClick={() => onCanvasBackgroundChange?.('bg-gray-50')} />
+            <ColorSwatch color="bg-neutral-100" active={canvasBackground === 'bg-neutral-100'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-100')} />
+            <ColorSwatch color="bg-neutral-200" active={canvasBackground === 'bg-neutral-200'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-200')} />
+            <ColorSwatch color="bg-neutral-300" active={canvasBackground === 'bg-neutral-300'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-300')} />
+            <ColorSwatch color="bg-yellow-100" active={canvasBackground === 'bg-yellow-100'} onClick={() => onCanvasBackgroundChange?.('bg-yellow-100')} />
           </div>
         </div>
 
@@ -157,13 +160,15 @@ function ThemeButton({ icon, active }: ThemeButtonProps) {
   )
 }
 
-function ColorSwatch({ color, active }: { color: string; active?: boolean }) {
+function ColorSwatch({ color, active, onClick }: { color: string; active?: boolean; onClick?: () => void }) {
   return (
     <div
+      onClick={onClick}
       className={`
-        w-8 h-8 rounded-md border cursor-pointer
+        w-8 h-8 rounded-md border cursor-pointer transition-all
         ${color}
         ${active ? "border-purple-600 ring-2 ring-purple-500" : "border-neutral-300 dark:border-neutral-700"}
+        ${onClick ? "hover:scale-110" : ""}
       `}
     />
   )
