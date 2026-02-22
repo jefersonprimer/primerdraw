@@ -91,6 +91,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   const stageRef = useRef<Konva.Stage>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   const [draggingControlPoint, setDraggingControlPoint] = useState<{ elementId: string; pointIndex: number } | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   const elementsRef = useRef(elements);
   useEffect(() => {
@@ -153,9 +154,13 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [setElements, setSelectedIds]);
 
-  const handleTextInput = useCallback((x: number, y: number, id: string, initialText = '') => {
+  const handleTextInput = useCallback((x: number, y: number, id: string, initialText = '', onEditEnd?: () => void) => {
     const stage = stageRef.current;
     if (!stage) return;
+
+    const isEditingExisting = initialText.length > 0;
+    if (isEditingExisting) setEditingTextId(id);
+    else setEditingTextId(null);
 
     const existingTextarea = document.getElementById('whiteboard-textarea');
     if (existingTextarea) {
@@ -276,12 +281,18 @@ export const Canvas: React.FC<CanvasProps> = ({
         }
         setSelectedIds([id]);
       }
+      onEditEnd?.();
     };
 
     textarea.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         finishText();
+        return;
+      }
+      // Evitar que Backspace/Delete cheguem ao handler global que apaga elementos
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.stopPropagation();
       }
     });
     textarea.addEventListener('blur', finishText);
@@ -320,6 +331,21 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
 
     if (activeTool === 'text') {
+      const isClickedOnEmpty = e.target.getStage() === e.target;
+      if (!isClickedOnEmpty) {
+        const hitId = e.target.id();
+        const hitElement = elementsRef.current.find((el) => el.id === hitId);
+        if (hitElement?.type === 'text') {
+          const alreadySelected = selectedIds.includes(hitId);
+          if (alreadySelected) {
+            setSelectedIds([]);
+            handleTextInput(hitElement.x, hitElement.y, hitElement.id, hitElement.text ?? '', () => setEditingTextId(null));
+          } else {
+            setSelectedIds([hitId]);
+          }
+          return;
+        }
+      }
       handleTextInput(pos.x, pos.y, nanoid());
       return;
     }
@@ -364,7 +390,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     newElementRef.current = element;
     setNewElement(element);
     setSelectedIds([id]);
-  }, [activeTool, defaultProps, handleTextInput, handleEraser, setSelectedIds]);
+  }, [activeTool, defaultProps, handleTextInput, handleEraser, setSelectedIds, selectedIds]);
 
   const handleMouseMove = useCallback((e: any) => {
     const stage = e.target.getStage();
@@ -664,7 +690,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       const isInput = document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT';
-      if (isInput) return;
+      const isWhiteboardTextarea = document.getElementById('whiteboard-textarea');
+      if (isInput || isWhiteboardTextarea) return;
 
       // DELETE / BACKSPACE
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
@@ -866,7 +893,10 @@ export const Canvas: React.FC<CanvasProps> = ({
               const tension = points.length === 6 ? 0.5 : 0;
               return <Arrow key={el.id} {...commonProps} points={points} fill={resolveStroke(el.stroke)} pointerAtEnding={el.arrowheads} tension={tension} />;
             }
-            if (el.type === 'text') return <Text key={el.id} {...commonProps} strokeWidth={0} fill={resolveStroke(el.stroke)} text={el.text ?? ''} fontSize={el.fontSize ?? 20} fontFamily={el.fontFamily ?? 'Sans-serif'} fontStyle="normal" lineHeight={1.2} align={el.textAlign ?? 'left'} width={el.width ?? 0} height={el.height ?? 0} onDblClick={(e) => handleTextInput(el.x, el.y, el.id, el.text ?? '')} />;
+            if (el.type === 'text') {
+              if (el.id === editingTextId) return null;
+              return <Text key={el.id} {...commonProps} strokeWidth={0} fill={resolveStroke(el.stroke)} text={el.text ?? ''} fontSize={el.fontSize ?? 20} fontFamily={el.fontFamily ?? 'Sans-serif'} fontStyle="normal" lineHeight={1.2} align={el.textAlign ?? 'left'} width={el.width ?? 0} height={el.height ?? 0} onDblClick={(e) => handleTextInput(el.x, el.y, el.id, el.text ?? '', () => setEditingTextId(null))} />;
+            }
             if (el.type === 'image') return <ImageElement key={el.id} el={el} activeTool={activeTool} {...commonProps} />;
             return null;
           })}
