@@ -75,7 +75,7 @@ const DEFAULT_ELEMENT: Partial<WhiteboardElement> = {
   fill: 'transparent',
   strokeWidth: 2,
   strokeStyle: 'solid',
-  sloppiness: 1,
+  sloppiness: 0,
   edges: 'sharp',
   opacity: 1,
   arrowType: 'simple',

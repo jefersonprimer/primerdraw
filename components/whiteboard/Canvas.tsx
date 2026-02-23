@@ -36,7 +36,7 @@ function seededNoise(seed: string, i: number): number {
   return (Math.sin(h * 0.1) * 0.5 + 0.5) * 2 - 1;
 }
 
-// Desenha forma com traço tipo lápis: mesma geometria, várias passadas com grão e opacidade
+// Desenha forma com traço tipo lápis: geometria base + jitter nos pontos (hand‑drawn)
 function createPencilSceneFunc(
   type: 'rectangle' | 'circle' | 'triangle' | 'diamond',
   w: number,
@@ -51,8 +51,11 @@ function createPencilSceneFunc(
   seed: string,
   cornerRadius: number
 ) {
-  const numPasses = sloppiness === 1 ? 4 : 8;
-  const jitter = sloppiness === 1 ? 0.35 : 0.6;
+  // Nivel 1: leve hand-drawn, Nivel 2: bem rough/rabiscado
+  const numPasses = sloppiness === 1 ? 2 : 4;
+  const baseJitterFactor = sloppiness === 1 ? 0.01 : 0.03; // % do menor lado
+  const edgeJitter = Math.min(w, h) * baseJitterFactor;
+  const samplesPerEdge = sloppiness === 1 ? 14 : 28;
 
   return (context: Konva.Context, shape: Konva.Shape) => {
     const ctx = context._context;
@@ -61,7 +64,25 @@ function createPencilSceneFunc(
     const rx = w / 2;
     const ry = h / 2;
 
-    function addPath() {
+    // Jitter determinístico ao longo de um segmento (linha reta)
+    function jitteredEdge(x1: number, y1: number, x2: number, y2: number, passIndex: number, edgeIndex: number) {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      for (let i = 1; i < samplesPerEdge; i++) {
+        const t = i / samplesPerEdge;
+        const px = x1 + (x2 - x1) * t;
+        const py = y1 + (y2 - y1) * t;
+        const noiseIndex = passIndex * 1000 + edgeIndex * 100 + i;
+        const nx = seededNoise(seed, noiseIndex) * edgeJitter;
+        const ny = seededNoise(seed, noiseIndex + 1) * edgeJitter;
+        ctx.lineTo(px + nx, py + ny);
+      }
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    // Forma base para fill (sem jitter pesado para manter interior limpo)
+    function addBasePath() {
       ctx.beginPath();
       if (type === 'rectangle') {
         if (cornerRadius > 0) {
@@ -102,7 +123,7 @@ function createPencilSceneFunc(
     ctx.save();
     // Fill
     if (fill && fill !== 'transparent') {
-      addPath();
+      addBasePath();
       ctx.fillStyle = fill;
       ctx.fill();
     }
@@ -115,17 +136,126 @@ function createPencilSceneFunc(
 
     for (let i = 0; i < numPasses; i++) {
       ctx.save();
-      ctx.translate(seededNoise(seed, i * 2) * jitter, seededNoise(seed, i * 2 + 1) * jitter);
+      // jitter global leve por passada
+      const globalJitter = edgeJitter * 0.25;
+      ctx.translate(
+        seededNoise(seed, i * 2) * globalJitter,
+        seededNoise(seed, i * 2 + 1) * globalJitter
+      );
       ctx.globalAlpha = 0.35 + 0.3 * (0.5 + 0.5 * seededNoise(seed, i + 50));
-      addPath();
-      ctx.stroke();
+
+      // Contornos com jitter ao longo das bordas
+      if (type === 'rectangle' && cornerRadius === 0) {
+        const edges = [
+          [0, 0, w, 0],
+          [w, 0, w, h],
+          [w, h, 0, h],
+          [0, h, 0, 0],
+        ] as const;
+        edges.forEach(([x1, y1, x2, y2], edgeIndex) => {
+          jitteredEdge(x1, y1, x2, y2, i, edgeIndex);
+        });
+      } else if (type === 'circle') {
+        const totalSamples = samplesPerEdge * 4;
+        ctx.beginPath();
+        for (let s = 0; s <= totalSamples; s++) {
+          const t = s / totalSamples;
+          const angle = t * Math.PI * 2;
+          const bx = cx + rx * Math.cos(angle);
+          const by = cy + ry * Math.sin(angle);
+          const noiseIndex = i * 2000 + s;
+          const nx = seededNoise(seed, noiseIndex) * edgeJitter;
+          const ny = seededNoise(seed, noiseIndex + 1) * edgeJitter;
+          const x = bx + nx;
+          const y = by + ny;
+          if (s === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      } else if (type === 'triangle' || type === 'diamond') {
+        // Compute polygon vertices and draw each edge with jitter
+        let vertices: [number, number][];
+        if (type === 'triangle') {
+          const r = Math.min(w, h) / 2;
+          vertices = Array.from({ length: 3 }, (_, k) => {
+            const a = (k / 3) * Math.PI * 2 - Math.PI / 2;
+            return [cx + r * Math.cos(a), cy + r * Math.sin(a) * (h / w)] as [number, number];
+          });
+        } else {
+          // diamond
+          vertices = [
+            [cx, 0],
+            [w, cy],
+            [cx, h],
+            [0, cy],
+          ];
+        }
+        const nv = vertices.length;
+        vertices.forEach(([x1, y1], idx) => {
+          const [x2, y2] = vertices[(idx + 1) % nv];
+          jitteredEdge(x1, y1, x2, y2, i, idx);
+        });
+      } else if (type === 'rectangle' && cornerRadius > 0) {
+        addBasePath();
+        ctx.stroke();
+      }
+
       ctx.restore();
     }
     ctx.globalAlpha = 1;
-    addPath();
+    // última passada mais limpa para "ancorar" o traço
+    addBasePath();
     ctx.stroke();
     ctx.restore();
   };
+}
+
+// Jitter em polyline (line/arrow): insere pontos intermediários com deslocamento
+// perpendicular seeded para criar ondulação hand-drawn visível.
+function createJitteredPolyline(points: number[], sloppiness: number, seed: string): number[] {
+  if (!points || points.length < 4 || sloppiness <= 0) return points;
+
+  // Nível 1: pouca ondulação; Nível 2: bastante rough
+  const samplesPerSegment = sloppiness === 1 ? 8 : 16;
+  const baseFactor = sloppiness === 1 ? 0.04 : 0.09;
+
+  const segmentCount = points.length / 2 - 1;
+  const out: number[] = [];
+
+  for (let seg = 0; seg < segmentCount; seg++) {
+    const x1 = points[seg * 2];
+    const y1 = points[seg * 2 + 1];
+    const x2 = points[seg * 2 + 2];
+    const y2 = points[seg * 2 + 3];
+    const segLen = Math.hypot(x2 - x1, y2 - y1);
+    if (!isFinite(segLen) || segLen <= 0) {
+      if (seg === 0) out.push(x1, y1);
+      continue;
+    }
+    // Vetor perpendicular unitário
+    const perpX = -(y2 - y1) / segLen;
+    const perpY = (x2 - x1) / segLen;
+    const amp = Math.max(1, segLen * baseFactor);
+
+    // Primeiro ponto do segmento (sem jitter para que a polyline seja contígua)
+    if (seg === 0) out.push(x1, y1);
+
+    // Pontos intermediários com jitter perpendicular
+    for (let s = 1; s < samplesPerSegment; s++) {
+      const t = s / samplesPerSegment;
+      const px = x1 + (x2 - x1) * t;
+      const py = y1 + (y2 - y1) * t;
+      // Ruído que cai a zero nos extremos para não deslocar endpoints
+      const envelope = Math.sin(t * Math.PI); // 0 → 1 → 0
+      const noiseIdx = seg * 1000 + s;
+      const d = seededNoise(seed, noiseIdx) * amp * envelope;
+      out.push(px + perpX * d, py + perpY * d);
+    }
+  }
+  // Último ponto sempre sem jitter
+  out.push(points[points.length - 2], points[points.length - 1]);
+  return out;
 }
 
 interface CanvasProps {
@@ -283,7 +413,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     const textarea = document.createElement('textarea');
     textarea.id = 'whiteboard-textarea';
     document.body.appendChild(textarea);
-    
+
     textarea.value = initialText;
     textarea.style.position = 'absolute';
 
@@ -300,7 +430,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     textarea.style.color = defaultProps.stroke || (isDark ? DEFAULT_STROKE_DARK : DEFAULT_STROKE_LIGHT);
     textarea.style.webkitFontSmoothing = 'antialiased';
     textarea.style.mozOsxFontSmoothing = 'grayscale';
-    
+
     textarea.style.boxSizing = 'border-box';
     textarea.style.outline = 'none';
     textarea.style.zIndex = '9999';
@@ -338,7 +468,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     const finishText = async () => {
       if (isFinished) return;
       isFinished = true;
-      
+
       const val = textarea.value;
       // Add 5px buffer before dividing by scale to prevent clipping
       const finalWidth = Math.max((textarea.offsetWidth + 5) / scale, 5);
@@ -423,7 +553,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         if (!id) return;
 
         const metaPressed = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
-        
+
         setSelectedIds(prev => {
           const isSelected = prev.includes(id);
           if (!metaPressed && !isSelected) return [id];
@@ -474,7 +604,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       strokeWidth: 2,
       rotation: 0,
       strokeStyle: 'solid',
-      sloppiness: 1,
+      sloppiness: 0,
       edges: 'sharp',
       opacity: 1,
       arrowType: 'simple',
@@ -529,7 +659,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     } else if (activeTool === 'pencil') {
       updatedElement.points = [...(currentNew.points || []), pos.x - currentNew.x, pos.y - currentNew.y];
     }
-    
+
     newElementRef.current = updatedElement;
     setNewElement(updatedElement);
   }, [activeTool, isDrawing, isSelecting, handleEraser]);
@@ -595,7 +725,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
       saveHistory([...elementsRef.current, finalElement]);
     }
-    
+
     newElementRef.current = null;
     setNewElement(null);
   }, [isSelecting, selectionBox, activeTool, isDrawing, eraserSnapshot, saveHistory, setSelectedIds]);
@@ -622,7 +752,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         const newHeight = node.height() * node.scaleY();
         updatedElement.width = newWidth;
         updatedElement.height = newHeight;
-        
+
         // For text, update fontSize proportionally to the scale
         if (element.type === 'text') {
           const scaleX = node.scaleX();
@@ -632,7 +762,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           const currentFontSize = element.fontSize ?? 20;
           updatedElement.fontSize = Math.max(8, Math.round(currentFontSize * avgScale));
         }
-        
+
         // Update node immediately so it doesn't snap back to old size before re-render
         node.width(newWidth);
         node.height(newHeight);
@@ -660,7 +790,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         const points = element.points || [0, 0, 0, 0];
         const scaleX = node.scaleX();
         const scaleY = node.scaleY();
-        
+
         // Scale X coordinates for length
         const scaledPoints = points.map((p, idx) => {
           if (idx % 2 === 0) {
@@ -671,19 +801,19 @@ export const Canvas: React.FC<CanvasProps> = ({
             return p;
           }
         });
-        
+
         updatedElement.points = scaledPoints;
-        
+
         // Scale strokeWidth based on vertical scaling (grossura)
         const currentStrokeWidth = element.strokeWidth || 2;
         const newStrokeWidth = Math.max(1, Math.round(currentStrokeWidth * scaleY));
         updatedElement.strokeWidth = newStrokeWidth;
-        
+
         // Reset scale
         node.scaleX(1);
         node.scaleY(1);
       }
-      
+
       updatedElements[index] = updatedElement;
     }
     saveHistory(updatedElements);
@@ -777,7 +907,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         const scaleBy = 1.1;
         const newScale = e.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
         const clampedScale = Math.min(Math.max(0.1, newScale), 5);
-        
+
         // Update zoom state in parent via a custom event since we can't easily call setZoom here
         window.dispatchEvent(new CustomEvent('update-zoom', { detail: { zoom: clampedScale } }));
 
@@ -952,7 +1082,8 @@ export const Canvas: React.FC<CanvasProps> = ({
               const h = el.height ?? 0;
               if (slop > 0) {
                 const sceneFunc = createPencilSceneFunc('rectangle', w, h, resolveStroke(el.stroke), el.fill ?? 'transparent', el.strokeWidth, getDash(el.strokeStyle), el.edges === 'round' ? 'round' : 'miter', el.edges === 'round' ? 'round' : 'butt', slop, el.id, el.edges === 'round' ? 10 : 0);
-                return <Shape key={el.id} {...commonProps} width={w} height={h} sceneFunc={sceneFunc} />;
+                const hitFunc = (ctx: Konva.Context, sh: Konva.Shape) => { ctx._context.beginPath(); ctx._context.rect(0, 0, w, h); ctx._context.closePath(); ctx.fillStrokeShape(sh); };
+                return <Shape key={el.id} {...commonProps} width={w} height={h} sceneFunc={sceneFunc} hitFunc={hitFunc} />;
               }
               return <Rect key={el.id} {...commonProps} width={w} height={h} cornerRadius={el.edges === 'round' ? 10 : 0} />;
             }
@@ -962,7 +1093,8 @@ export const Canvas: React.FC<CanvasProps> = ({
               const rh = Math.max(Math.abs(el.height ?? 0), 1);
               if (slop > 0) {
                 const sceneFunc = createPencilSceneFunc('circle', rw, rh, resolveStroke(el.stroke), el.fill ?? 'transparent', el.strokeWidth, getDash(el.strokeStyle), el.edges === 'round' ? 'round' : 'miter', el.edges === 'round' ? 'round' : 'butt', slop, el.id, 0);
-                return <Shape key={el.id} {...commonProps} x={el.x + rw / 2} y={el.y + rh / 2} offsetX={rw / 2} offsetY={rh / 2} width={rw} height={rh} sceneFunc={sceneFunc} />;
+                const hitFunc = (ctx: Konva.Context, sh: Konva.Shape) => { ctx._context.beginPath(); ctx._context.rect(-rw / 2, -rh / 2, rw, rh); ctx._context.closePath(); ctx.fillStrokeShape(sh); };
+                return <Shape key={el.id} {...commonProps} x={el.x + rw / 2} y={el.y + rh / 2} offsetX={rw / 2} offsetY={rh / 2} width={rw} height={rh} sceneFunc={sceneFunc} hitFunc={hitFunc} />;
               }
               return <Ellipse key={el.id} {...commonProps} radiusX={rw / 2} radiusY={rh / 2} x={el.x + rw / 2} y={el.y + rh / 2} />;
             }
@@ -972,7 +1104,8 @@ export const Canvas: React.FC<CanvasProps> = ({
               const rh = Math.max(Math.abs(el.height ?? 0), 1);
               if (slop > 0) {
                 const sceneFunc = createPencilSceneFunc('diamond', rw, rh, resolveStroke(el.stroke), el.fill ?? 'transparent', el.strokeWidth, getDash(el.strokeStyle), el.edges === 'round' ? 'round' : 'miter', el.edges === 'round' ? 'round' : 'butt', slop, el.id, 0);
-                return <Shape key={el.id} {...commonProps} x={el.x + rw / 2} y={el.y + rh / 2} offsetX={rw / 2} offsetY={rh / 2} width={rw} height={rh} sceneFunc={sceneFunc} />;
+                const hitFunc = (ctx: Konva.Context, sh: Konva.Shape) => { ctx._context.beginPath(); ctx._context.rect(-rw / 2, -rh / 2, rw, rh); ctx._context.closePath(); ctx.fillStrokeShape(sh); };
+                return <Shape key={el.id} {...commonProps} x={el.x + rw / 2} y={el.y + rh / 2} offsetX={rw / 2} offsetY={rh / 2} width={rw} height={rh} sceneFunc={sceneFunc} hitFunc={hitFunc} />;
               }
               return <RegularPolygon key={el.id} {...commonProps} sides={4} radius={rw / 2} scaleY={rh / rw} x={el.x + rw / 2} y={el.y + rh / 2} />;
             }
@@ -982,18 +1115,27 @@ export const Canvas: React.FC<CanvasProps> = ({
               const rh = Math.max(Math.abs(el.height ?? 0), 1);
               if (slop > 0) {
                 const sceneFunc = createPencilSceneFunc('triangle', rw, rh, resolveStroke(el.stroke), el.fill ?? 'transparent', el.strokeWidth, getDash(el.strokeStyle), el.edges === 'round' ? 'round' : 'miter', el.edges === 'round' ? 'round' : 'butt', slop, el.id, 0);
-                return <Shape key={el.id} {...commonProps} x={el.x + rw / 2} y={el.y + rh / 2} offsetX={rw / 2} offsetY={rh / 2} width={rw} height={rh} sceneFunc={sceneFunc} />;
+                const hitFunc = (ctx: Konva.Context, sh: Konva.Shape) => { ctx._context.beginPath(); ctx._context.rect(-rw / 2, -rh / 2, rw, rh); ctx._context.closePath(); ctx.fillStrokeShape(sh); };
+                return <Shape key={el.id} {...commonProps} x={el.x + rw / 2} y={el.y + rh / 2} offsetX={rw / 2} offsetY={rh / 2} width={rw} height={rh} sceneFunc={sceneFunc} hitFunc={hitFunc} />;
               }
               return <RegularPolygon key={el.id} {...commonProps} sides={3} radius={rw / 2} scaleY={rh / rw} x={el.x + rw / 2} y={el.y + rh / 2} />;
             }
             if (el.type === 'line' || el.type === 'pencil') {
-              const points = el.points || [];
+              const slop = el.sloppiness ?? 0;
+              let points = el.points || [];
+              if (slop > 0 && el.type === 'line') {
+                points = createJitteredPolyline(points, slop, el.id);
+              }
               // Use tension for curved lines (6 points) or pencil
               const tension = el.type === 'pencil' ? 0.5 : (points.length === 6 ? 0.5 : 0);
               return <Line key={el.id} {...commonProps} points={points} tension={tension} />;
             }
             if (el.type === 'arrow') {
-              const points = el.points || [];
+              const slop = el.sloppiness ?? 0;
+              let points = el.points || [];
+              if (slop > 0) {
+                points = createJitteredPolyline(points, slop, el.id);
+              }
               const tension = points.length > 4 ? 0.5 : 0;
               const style = el.arrowheadStyle ?? 'triangle';
               const useNativePointer = style === 'triangle';
@@ -1184,7 +1326,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               )}
               {newElement.type === 'circle' && (
                 <Ellipse
-                  x={newElement.x + (newElement.width ?? 0) / 2} y={newElement.y + (newElement.height ?? 0) / 2} 
+                  x={newElement.x + (newElement.width ?? 0) / 2} y={newElement.y + (newElement.height ?? 0) / 2}
                   radiusX={Math.abs((newElement.width ?? 0) / 2)} radiusY={Math.abs((newElement.height ?? 0) / 2)}
                   stroke={resolveStroke(newElement.stroke)} strokeWidth={newElement.strokeWidth}
                   fill={newElement.fill} opacity={newElement.opacity ?? 0.5}
@@ -1193,7 +1335,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               )}
               {newElement.type === 'triangle' && (
                 <RegularPolygon
-                  x={newElement.x + (newElement.width ?? 0) / 2} y={newElement.y + (newElement.height ?? 0) / 2} 
+                  x={newElement.x + (newElement.width ?? 0) / 2} y={newElement.y + (newElement.height ?? 0) / 2}
                   sides={3} radius={Math.abs(newElement.width ?? 0) / 2} scaleY={Math.abs((newElement.height ?? 0) / (Math.max(Math.abs(newElement.width ?? 0), 1)))}
                   stroke={resolveStroke(newElement.stroke)} strokeWidth={newElement.strokeWidth}
                   fill={newElement.fill} opacity={newElement.opacity ?? 0.5}
@@ -1202,7 +1344,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               )}
               {newElement.type === 'diamond' && (
                 <RegularPolygon
-                  x={newElement.x + (newElement.width ?? 0) / 2} y={newElement.y + (newElement.height ?? 0) / 2} 
+                  x={newElement.x + (newElement.width ?? 0) / 2} y={newElement.y + (newElement.height ?? 0) / 2}
                   sides={4} radius={Math.abs(newElement.width ?? 0) / 2} scaleY={Math.abs((newElement.height ?? 0) / (Math.max(Math.abs(newElement.width ?? 0), 1)))}
                   stroke={resolveStroke(newElement.stroke)} strokeWidth={newElement.strokeWidth}
                   fill={newElement.fill} opacity={newElement.opacity ?? 0.5}
@@ -1222,15 +1364,15 @@ export const Canvas: React.FC<CanvasProps> = ({
           )}
 
           {selectionBox.visible && <Rect x={selectionBox.x} y={selectionBox.y} width={selectionBox.width} height={selectionBox.height} fill="rgba(0, 161, 255, 0.3)" stroke="#00a1ff" strokeWidth={1} />}
-          
+
           {/* Control points for arrows and lines */}
           {selectedIds.length > 0 && activeTool === 'select' && selectedIds.map(id => {
             const element = elements.find(el => el.id === id);
             if (!element || (element.type !== 'arrow' && element.type !== 'line')) return null;
-            
+
             const controlPoints = getControlPoints(element);
             if (!controlPoints) return null;
-            
+
             return (
               <React.Fragment key={`controls-${id}`}>
                 {controlPoints.points.map((pt, idx) => (
@@ -1265,7 +1407,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               </React.Fragment>
             );
           })}
-          
+
           {selectedIds.length > 0 && activeTool === 'select' && (
             <Transformer ref={transformerRef} onTransformEnd={handleTransformEnd} />
           )}
