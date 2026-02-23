@@ -45,6 +45,9 @@ export default function Whiteboard() {
     opacity: 1,
     arrowType: 'simple',
     arrowheads: true,
+    arrowBreakPoints: 3,
+    arrowheadTail: false,
+    arrowheadStyle: 'triangle',
     fontFamily: 'Sans-serif',
     fontSize: 20,
     textAlign: 'left',
@@ -226,10 +229,28 @@ export default function Whiteboard() {
     // Use elementsRef so we always merge into the latest state (preserves width/height after resize)
     const currentElements = elementsRef.current;
     const updatedElements = currentElements.map(el => {
-      if (selectedIds.includes(el.id)) {
-        return { ...el, ...updates };
+      if (!selectedIds.includes(el.id)) return el;
+      const merged = { ...el, ...updates };
+      if (el.type === 'arrow' && updates.arrowBreakPoints != null && el.points && el.points.length >= 4) {
+        const targetN = updates.arrowBreakPoints;
+        const currentN = el.points.length / 2;
+        if (targetN !== currentN) {
+          const pts = el.points;
+          const out: number[] = [];
+          for (let i = 0; i < targetN; i++) {
+            const t = targetN === 1 ? 1 : i / (targetN - 1);
+            const idx = t * (currentN - 1);
+            const lo = Math.floor(idx);
+            const hi = Math.min(lo + 1, currentN - 1);
+            const f = idx - lo;
+            const x = (pts[lo * 2] ?? 0) * (1 - f) + (pts[hi * 2] ?? 0) * f;
+            const y = (pts[lo * 2 + 1] ?? 0) * (1 - f) + (pts[hi * 2 + 1] ?? 0) * f;
+            out.push(x, y);
+          }
+          merged.points = out;
+        }
       }
-      return el;
+      return merged;
     });
 
     saveHistory(updatedElements);

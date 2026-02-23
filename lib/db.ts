@@ -22,6 +22,9 @@ export interface WhiteboardElement {
   edges: 'sharp' | 'round';
   arrowType: 'simple' | 'double' | 'circle';
   arrowheads: boolean;
+  arrowBreakPoints: 3 | 5 | 8;
+  arrowheadTail: boolean;
+  arrowheadStyle: 'triangle' | 'circle' | 'diamond';
   opacity: number;
   fontFamily: string;
   fontSize: number;

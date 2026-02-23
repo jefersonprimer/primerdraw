@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Stage, Layer, Rect, Circle, Text, Line, Transformer, RegularPolygon, Arrow, Image as KonvaImage, Ellipse } from 'react-konva';
+import { Stage, Layer, Rect, Circle, Text, Line, Transformer, RegularPolygon, Arrow, Image as KonvaImage, Ellipse, Shape, Group } from 'react-konva';
 import { nanoid } from 'nanoid';
 import { WhiteboardElement, db } from '@/lib/db';
 import { Tool } from './Toolbar';
@@ -24,6 +24,108 @@ function resolveStrokeForTheme(stroke: string, isDark: boolean): string {
   if (isDark && CONTRAST_STROKE_LIGHT.some((c) => c === s)) return DEFAULT_STROKE_DARK;
   if (!isDark && CONTRAST_STROKE_DARK.some((c) => c === s)) return DEFAULT_STROKE_LIGHT;
   return stroke;
+}
+
+// Deterministic "random" in [-1, 1] from seed (traço estável tipo lápis)
+function seededNoise(seed: string, i: number): number {
+  let h = 0;
+  const s = seed + '-' + i;
+  for (let j = 0; j < s.length; j++) {
+    h = Math.imul(31, h) + s.charCodeAt(j) | 0;
+  }
+  return (Math.sin(h * 0.1) * 0.5 + 0.5) * 2 - 1;
+}
+
+// Desenha forma com traço tipo lápis: mesma geometria, várias passadas com grão e opacidade
+function createPencilSceneFunc(
+  type: 'rectangle' | 'circle' | 'triangle' | 'diamond',
+  w: number,
+  h: number,
+  stroke: string,
+  fill: string,
+  strokeWidth: number,
+  dash: number[],
+  lineJoin: 'miter' | 'round' | 'bevel',
+  lineCap: 'butt' | 'round' | 'square',
+  sloppiness: number,
+  seed: string,
+  cornerRadius: number
+) {
+  const numPasses = sloppiness === 1 ? 4 : 8;
+  const jitter = sloppiness === 1 ? 0.35 : 0.6;
+
+  return (context: Konva.Context, shape: Konva.Shape) => {
+    const ctx = context._context;
+    const cx = w / 2;
+    const cy = h / 2;
+    const rx = w / 2;
+    const ry = h / 2;
+
+    function addPath() {
+      ctx.beginPath();
+      if (type === 'rectangle') {
+        if (cornerRadius > 0) {
+          const r = Math.min(cornerRadius, w / 2, h / 2);
+          ctx.moveTo(r, 0);
+          ctx.lineTo(w - r, 0);
+          ctx.arcTo(w, 0, w, r, r);
+          ctx.lineTo(w, h - r);
+          ctx.arcTo(w, h, w - r, h, r);
+          ctx.lineTo(r, h);
+          ctx.arcTo(0, h, 0, h - r, r);
+          ctx.lineTo(0, r);
+          ctx.arcTo(0, 0, r, 0, r);
+        } else {
+          ctx.rect(0, 0, w, h);
+        }
+      } else if (type === 'circle') {
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      } else if (type === 'triangle') {
+        const r = Math.min(w, h) / 2;
+        for (let i = 0; i < 3; i++) {
+          const a = (i / 3) * Math.PI * 2 - Math.PI / 2;
+          const x = cx + r * Math.cos(a);
+          const y = cy + r * Math.sin(a) * (h / w);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+      } else if (type === 'diamond') {
+        ctx.moveTo(cx, 0);
+        ctx.lineTo(w, cy);
+        ctx.lineTo(cx, h);
+        ctx.lineTo(0, cy);
+        ctx.closePath();
+      }
+    }
+
+    ctx.save();
+    // Fill
+    if (fill && fill !== 'transparent') {
+      addPath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    // Pencil stroke: várias passadas com pequeno deslocamento e opacidade = grão de lápis
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = strokeWidth;
+    ctx.lineJoin = lineJoin;
+    ctx.lineCap = lineCap;
+    if (dash.length) ctx.setLineDash(dash);
+
+    for (let i = 0; i < numPasses; i++) {
+      ctx.save();
+      ctx.translate(seededNoise(seed, i * 2) * jitter, seededNoise(seed, i * 2 + 1) * jitter);
+      ctx.globalAlpha = 0.35 + 0.3 * (0.5 + 0.5 * seededNoise(seed, i + 50));
+      addPath();
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    addPath();
+    ctx.stroke();
+    ctx.restore();
+  };
 }
 
 interface CanvasProps {
@@ -120,6 +222,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         opacity: 1,
         arrowType: 'simple',
         arrowheads: true,
+        arrowBreakPoints: 3,
+        arrowheadTail: false,
+        arrowheadStyle: 'triangle',
         fontFamily: 'Sans-serif',
         fontSize: 20,
         textAlign: 'left',
@@ -374,6 +479,9 @@ export const Canvas: React.FC<CanvasProps> = ({
       opacity: 1,
       arrowType: 'simple',
       arrowheads: true,
+      arrowBreakPoints: 3,
+      arrowheadTail: false,
+      arrowheadStyle: 'triangle',
       fontFamily: 'Sans-serif',
       fontSize: 20,
       textAlign: 'left',
@@ -473,6 +581,16 @@ export const Canvas: React.FC<CanvasProps> = ({
           finalElement.y = finalElement.y + height;
           finalElement.height = Math.abs(height);
         }
+      }
+      if (finalElement.type === 'arrow' && finalElement.points?.length === 4) {
+        const n = finalElement.arrowBreakPoints ?? 3;
+        const [x1, y1, x2, y2] = finalElement.points;
+        const out: number[] = [];
+        for (let i = 0; i < n; i++) {
+          const t = n === 1 ? 1 : i / (n - 1);
+          out.push(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t);
+        }
+        finalElement.points = out;
       }
 
       saveHistory([...elementsRef.current, finalElement]);
@@ -739,33 +857,23 @@ export const Canvas: React.FC<CanvasProps> = ({
     return [];
   };
 
-  // Calculate control points for arrows and lines
+  // Calculate control points for arrows and lines (supports 3, 5, or 8 break points)
   const getControlPoints = useCallback((element: WhiteboardElement) => {
     const points = element.points || [0, 0, 0, 0];
-    
-    // If we have 4 points (straight line), calculate tail, middle, and head
-    if (points.length === 4) {
-      const [x1, y1, x2, y2] = points;
-      return {
-        tail: { x: element.x + x1, y: element.y + y1 },
-        middle: { x: element.x + (x1 + x2) / 2, y: element.y + (y1 + y2) / 2 },
-        head: { x: element.x + x2, y: element.y + y2 },
-        isCurved: false
-      };
+    const len = points.length;
+    if (len < 4 || len % 2 !== 0) return null;
+    const n = len / 2;
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i < n; i++) {
+      pts.push({
+        x: element.x + points[i * 2],
+        y: element.y + points[i * 2 + 1]
+      });
     }
-    
-    // If we have 6 points (curved line with middle point), calculate all three
-    if (points.length === 6) {
-      const [x1, y1, mx, my, x2, y2] = points;
-      return {
-        tail: { x: element.x + x1, y: element.y + y1 },
-        middle: { x: element.x + mx, y: element.y + my },
-        head: { x: element.x + x2, y: element.y + y2 },
-        isCurved: true
-      };
-    }
-    
-    return null;
+    return {
+      points: pts,
+      isCurved: len > 4
+    };
   }, []);
 
   // Handle control point drag
@@ -781,41 +889,14 @@ export const Canvas: React.FC<CanvasProps> = ({
     if (!element || (element.type !== 'arrow' && element.type !== 'line')) return;
 
     const points = element.points || [0, 0, 0, 0];
-    let newPoints: number[];
+    const n = points.length / 2;
+    if (pointIndex < 0 || pointIndex >= n) return;
 
-    if (points.length === 4) {
-      // Straight line - convert to curved when middle point is dragged
-      const [x1, y1, x2, y2] = points;
-      if (pointIndex === 1) {
-        // Middle point - convert to curved line
-        const mx = pos.x - element.x;
-        const my = pos.y - element.y;
-        newPoints = [x1, y1, mx, my, x2, y2];
-      } else if (pointIndex === 0) {
-        // Tail point
-        newPoints = [pos.x - element.x, pos.y - element.y, x2, y2];
-      } else {
-        // Head point
-        newPoints = [x1, y1, pos.x - element.x, pos.y - element.y];
-      }
-    } else if (points.length === 6) {
-      // Curved line
-      const [x1, y1, mx, my, x2, y2] = points;
-      if (pointIndex === 0) {
-        // Tail point
-        newPoints = [pos.x - element.x, pos.y - element.y, mx, my, x2, y2];
-      } else if (pointIndex === 1) {
-        // Middle point
-        newPoints = [x1, y1, pos.x - element.x, pos.y - element.y, x2, y2];
-      } else {
-        // Head point
-        newPoints = [x1, y1, mx, my, pos.x - element.x, pos.y - element.y];
-      }
-    } else {
-      return;
-    }
+    const newPoints = [...points];
+    newPoints[pointIndex * 2] = pos.x - element.x;
+    newPoints[pointIndex * 2 + 1] = pos.y - element.y;
 
-    const updatedElements = currentElements.map(el => 
+    const updatedElements = currentElements.map(el =>
       el.id === elementId ? { ...el, points: newPoints } : el
     );
     setElements(updatedElements);
@@ -865,20 +946,44 @@ export const Canvas: React.FC<CanvasProps> = ({
               }
             };
 
-            if (el.type === 'rectangle') return <Rect key={el.id} {...commonProps} width={el.width ?? 0} height={el.height ?? 0} cornerRadius={el.edges === 'round' ? 10 : 0} />;
+            if (el.type === 'rectangle') {
+              const slop = el.sloppiness ?? 0;
+              const w = el.width ?? 0;
+              const h = el.height ?? 0;
+              if (slop > 0) {
+                const sceneFunc = createPencilSceneFunc('rectangle', w, h, resolveStroke(el.stroke), el.fill ?? 'transparent', el.strokeWidth, getDash(el.strokeStyle), el.edges === 'round' ? 'round' : 'miter', el.edges === 'round' ? 'round' : 'butt', slop, el.id, el.edges === 'round' ? 10 : 0);
+                return <Shape key={el.id} {...commonProps} width={w} height={h} sceneFunc={sceneFunc} />;
+              }
+              return <Rect key={el.id} {...commonProps} width={w} height={h} cornerRadius={el.edges === 'round' ? 10 : 0} />;
+            }
             if (el.type === 'circle') {
+              const slop = el.sloppiness ?? 0;
               const rw = Math.max(Math.abs(el.width ?? 0), 1);
               const rh = Math.max(Math.abs(el.height ?? 0), 1);
+              if (slop > 0) {
+                const sceneFunc = createPencilSceneFunc('circle', rw, rh, resolveStroke(el.stroke), el.fill ?? 'transparent', el.strokeWidth, getDash(el.strokeStyle), el.edges === 'round' ? 'round' : 'miter', el.edges === 'round' ? 'round' : 'butt', slop, el.id, 0);
+                return <Shape key={el.id} {...commonProps} x={el.x + rw / 2} y={el.y + rh / 2} offsetX={rw / 2} offsetY={rh / 2} width={rw} height={rh} sceneFunc={sceneFunc} />;
+              }
               return <Ellipse key={el.id} {...commonProps} radiusX={rw / 2} radiusY={rh / 2} x={el.x + rw / 2} y={el.y + rh / 2} />;
             }
             if (el.type === 'diamond') {
+              const slop = el.sloppiness ?? 0;
               const rw = Math.max(Math.abs(el.width ?? 0), 1);
               const rh = Math.max(Math.abs(el.height ?? 0), 1);
+              if (slop > 0) {
+                const sceneFunc = createPencilSceneFunc('diamond', rw, rh, resolveStroke(el.stroke), el.fill ?? 'transparent', el.strokeWidth, getDash(el.strokeStyle), el.edges === 'round' ? 'round' : 'miter', el.edges === 'round' ? 'round' : 'butt', slop, el.id, 0);
+                return <Shape key={el.id} {...commonProps} x={el.x + rw / 2} y={el.y + rh / 2} offsetX={rw / 2} offsetY={rh / 2} width={rw} height={rh} sceneFunc={sceneFunc} />;
+              }
               return <RegularPolygon key={el.id} {...commonProps} sides={4} radius={rw / 2} scaleY={rh / rw} x={el.x + rw / 2} y={el.y + rh / 2} />;
             }
             if (el.type === 'triangle') {
+              const slop = el.sloppiness ?? 0;
               const rw = Math.max(Math.abs(el.width ?? 0), 1);
               const rh = Math.max(Math.abs(el.height ?? 0), 1);
+              if (slop > 0) {
+                const sceneFunc = createPencilSceneFunc('triangle', rw, rh, resolveStroke(el.stroke), el.fill ?? 'transparent', el.strokeWidth, getDash(el.strokeStyle), el.edges === 'round' ? 'round' : 'miter', el.edges === 'round' ? 'round' : 'butt', slop, el.id, 0);
+                return <Shape key={el.id} {...commonProps} x={el.x + rw / 2} y={el.y + rh / 2} offsetX={rw / 2} offsetY={rh / 2} width={rw} height={rh} sceneFunc={sceneFunc} />;
+              }
               return <RegularPolygon key={el.id} {...commonProps} sides={3} radius={rw / 2} scaleY={rh / rw} x={el.x + rw / 2} y={el.y + rh / 2} />;
             }
             if (el.type === 'line' || el.type === 'pencil') {
@@ -889,9 +994,174 @@ export const Canvas: React.FC<CanvasProps> = ({
             }
             if (el.type === 'arrow') {
               const points = el.points || [];
-              // Use tension for curved arrows (6 points)
-              const tension = points.length === 6 ? 0.5 : 0;
-              return <Arrow key={el.id} {...commonProps} points={points} fill={resolveStroke(el.stroke)} pointerAtEnding={el.arrowheads} tension={tension} />;
+              const tension = points.length > 4 ? 0.5 : 0;
+              const style = el.arrowheadStyle ?? 'triangle';
+              const useNativePointer = style === 'triangle';
+              const strokeColor = resolveStroke(el.stroke);
+              const headSize = (el.strokeWidth ?? 2) * 3;
+              const showHead = el.arrowheads ?? true;
+              const showTail = el.arrowheadTail ?? false;
+              const arrowType = el.arrowType ?? 'simple';
+              if (useNativePointer) {
+                if (arrowType === 'double' && points.length >= 4) {
+                  const x1 = points[0] ?? 0;
+                  const y1 = points[1] ?? 0;
+                  const x2 = points[points.length - 2] ?? 0;
+                  const y2 = points[points.length - 1] ?? 0;
+                  const dx = x2 - x1;
+                  const dy = y2 - y1;
+                  const len = Math.hypot(dx, dy) || 1;
+                  const ux = dx / len;
+                  const uy = dy / len;
+                  const nx = -uy;
+                  const ny = ux;
+                  const offset = Math.max(3, (el.strokeWidth ?? 2) * 1.5);
+                  const offsetPoints = (sign: 1 | -1) =>
+                    points.map((p, idx) => (idx % 2 === 0 ? p + nx * offset * sign : p + ny * offset * sign));
+                  const ptsA = offsetPoints(1);
+                  const ptsB = offsetPoints(-1);
+                  // Direção da última perna para orientar a "cabeça" da ponta final
+                  const lx1 = points.length >= 4 ? (points[points.length - 4] ?? x1) : x1;
+                  const ly1 = points.length >= 4 ? (points[points.length - 3] ?? y1) : y1;
+                  const ldx = x2 - lx1;
+                  const ldy = y2 - ly1;
+                  const llen = Math.hypot(ldx, ldy) || 1;
+                  const lux = ldx / llen;
+                  const luy = ldy / llen;
+                  const headBack = Math.max(8, (el.strokeWidth ?? 2) * 4);
+                  const baseX = x2 - lux * headBack;
+                  const baseY = y2 - luy * headBack;
+                  const headPoints = [baseX, baseY, x2, y2];
+                  // Direção da primeira perna para orientar a "cabeça" do tail
+                  const fx2 = points.length >= 4 ? (points[2] ?? x2) : x2;
+                  const fy2 = points.length >= 4 ? (points[3] ?? y2) : y2;
+                  const fdx = fx2 - x1;
+                  const fdy = fy2 - y1;
+                  const flen = Math.hypot(fdx, fdy) || 1;
+                  const fux = fdx / flen;
+                  const fuy = fdy / flen;
+                  const tailBaseX = x1 + fux * headBack;
+                  const tailBaseY = y1 + fuy * headBack;
+                  const tailPoints = [tailBaseX, tailBaseY, x1, y1];
+                  const trimSegment = (
+                    pts: number[],
+                    startX: number,
+                    startY: number,
+                    endX: number,
+                    endY: number
+                  ) => {
+                    if (pts.length < 4) return pts;
+                    const out = pts.slice();
+                    // início
+                    out[0] = startX;
+                    out[1] = startY;
+                    // fim
+                    out[out.length - 2] = endX;
+                    out[out.length - 1] = endY;
+                    return out;
+                  };
+                  const ptsATrim = trimSegment(
+                    ptsA,
+                    tailBaseX + nx * offset,
+                    tailBaseY + ny * offset,
+                    baseX + nx * offset,
+                    baseY + ny * offset
+                  );
+                  const ptsBTrim = trimSegment(
+                    ptsB,
+                    tailBaseX - nx * offset,
+                    tailBaseY - ny * offset,
+                    baseX - nx * offset,
+                    baseY - ny * offset
+                  );
+                  return (
+                    <Group key={el.id} {...commonProps}>
+                      <Line
+                        x={0}
+                        y={0}
+                        points={ptsATrim}
+                        stroke={strokeColor}
+                        strokeWidth={el.strokeWidth}
+                        tension={tension}
+                        dash={getDash(el.strokeStyle)}
+                        lineJoin={el.edges === 'round' ? 'round' : 'miter'}
+                        lineCap={el.edges === 'round' ? 'round' : 'butt'}
+                        hitStrokeWidth={10}
+                      />
+                      <Line
+                        x={0}
+                        y={0}
+                        points={ptsBTrim}
+                        stroke={strokeColor}
+                        strokeWidth={el.strokeWidth}
+                        tension={tension}
+                        dash={getDash(el.strokeStyle)}
+                        lineJoin={el.edges === 'round' ? 'round' : 'miter'}
+                        lineCap={el.edges === 'round' ? 'round' : 'butt'}
+                        hitStrokeWidth={10}
+                      />
+                      {showHead && (
+                        <Arrow
+                          x={0}
+                          y={0}
+                          points={headPoints}
+                          stroke={strokeColor}
+                          strokeWidth={el.strokeWidth}
+                          fill={strokeColor}
+                          pointerAtEnding={true}
+                          pointerAtBeginning={false}
+                          tension={0}
+                          dash={undefined}
+                          lineJoin={el.edges === 'round' ? 'round' : 'miter'}
+                          lineCap={el.edges === 'round' ? 'round' : 'butt'}
+                          hitStrokeWidth={10}
+                        />
+                      )}
+                      {showTail && (
+                        <Arrow
+                          x={0}
+                          y={0}
+                          points={tailPoints}
+                          stroke={strokeColor}
+                          strokeWidth={el.strokeWidth}
+                          fill={strokeColor}
+                          pointerAtEnding={true}
+                          pointerAtBeginning={false}
+                          tension={0}
+                          dash={undefined}
+                          lineJoin={el.edges === 'round' ? 'round' : 'miter'}
+                          lineCap={el.edges === 'round' ? 'round' : 'butt'}
+                          hitStrokeWidth={10}
+                        />
+                      )}
+                    </Group>
+                  );
+                }
+                return (
+                  <Arrow
+                    key={el.id}
+                    {...commonProps}
+                    points={points}
+                    fill={strokeColor}
+                    pointerAtEnding={showHead}
+                    pointerAtBeginning={showTail}
+                    tension={tension}
+                  />
+                );
+              }
+              const headX = points.length >= 2 ? points[points.length - 2] : 0;
+              const headY = points.length >= 2 ? points[points.length - 1] : 0;
+              const tailX = points[0] ?? 0;
+              const tailY = points[1] ?? 0;
+              return (
+                <Group key={el.id} {...commonProps}>
+                  <Arrow x={0} y={0} points={points} stroke={strokeColor} strokeWidth={el.strokeWidth} fill={strokeColor} pointerAtEnding={false} pointerAtBeginning={false} pointerLength={0} tension={tension} dash={getDash(el.strokeStyle)} lineJoin={el.edges === 'round' ? 'round' : 'miter'} lineCap={el.edges === 'round' ? 'round' : 'butt'} hitStrokeWidth={10} />
+                  {showHead && style === 'circle' && <Circle x={headX} y={headY} radius={headSize} fill={strokeColor} stroke={strokeColor} strokeWidth={el.strokeWidth} />}
+                  {showHead && style === 'diamond' && <RegularPolygon x={headX} y={headY} sides={4} radius={headSize} fill={strokeColor} stroke={strokeColor} strokeWidth={el.strokeWidth} rotation={45} />}
+                  {showTail && style === 'circle' && <Circle x={tailX} y={tailY} radius={headSize} fill={strokeColor} stroke={strokeColor} strokeWidth={el.strokeWidth} />}
+                  {showTail && style === 'diamond' && <RegularPolygon x={tailX} y={tailY} sides={4} radius={headSize} fill={strokeColor} stroke={strokeColor} strokeWidth={el.strokeWidth} rotation={45} />}
+                </Group>
+              );
             }
             if (el.type === 'text') {
               if (el.id === editingTextId) return null;
@@ -963,87 +1233,35 @@ export const Canvas: React.FC<CanvasProps> = ({
             
             return (
               <React.Fragment key={`controls-${id}`}>
-                {/* Tail point */}
-                <Circle
-                  x={controlPoints.tail.x}
-                  y={controlPoints.tail.y}
-                  radius={6}
-                  fill="#00a1ff"
-                  stroke="#ffffff"
-                  strokeWidth={2}
-                  draggable
-                  onDragStart={(e) => {
-                    e.cancelBubble = true;
-                    handleControlPointDragStart(id, 0);
-                  }}
-                  onDragMove={(e) => {
-                    e.cancelBubble = true;
-                    handleControlPointDrag(e, id, 0);
-                  }}
-                  onDragEnd={(e) => {
-                    e.cancelBubble = true;
-                    handleControlPointDragEnd();
-                  }}
-                  onClick={(e) => {
-                    e.cancelBubble = true;
-                  }}
-                  hitStrokeWidth={10}
-                  listening={true}
-                />
-                {/* Middle point */}
-                <Circle
-                  x={controlPoints.middle.x}
-                  y={controlPoints.middle.y}
-                  radius={6}
-                  fill="#00a1ff"
-                  stroke="#ffffff"
-                  strokeWidth={2}
-                  draggable
-                  onDragStart={(e) => {
-                    e.cancelBubble = true;
-                    handleControlPointDragStart(id, 1);
-                  }}
-                  onDragMove={(e) => {
-                    e.cancelBubble = true;
-                    handleControlPointDrag(e, id, 1);
-                  }}
-                  onDragEnd={(e) => {
-                    e.cancelBubble = true;
-                    handleControlPointDragEnd();
-                  }}
-                  onClick={(e) => {
-                    e.cancelBubble = true;
-                  }}
-                  hitStrokeWidth={10}
-                  listening={true}
-                />
-                {/* Head point */}
-                <Circle
-                  x={controlPoints.head.x}
-                  y={controlPoints.head.y}
-                  radius={6}
-                  fill="#00a1ff"
-                  stroke="#ffffff"
-                  strokeWidth={2}
-                  draggable
-                  onDragStart={(e) => {
-                    e.cancelBubble = true;
-                    handleControlPointDragStart(id, 2);
-                  }}
-                  onDragMove={(e) => {
-                    e.cancelBubble = true;
-                    handleControlPointDrag(e, id, 2);
-                  }}
-                  onDragEnd={(e) => {
-                    e.cancelBubble = true;
-                    handleControlPointDragEnd();
-                  }}
-                  onClick={(e) => {
-                    e.cancelBubble = true;
-                  }}
-                  hitStrokeWidth={10}
-                  listening={true}
-                />
+                {controlPoints.points.map((pt, idx) => (
+                  <Circle
+                    key={`${id}-${idx}`}
+                    x={pt.x}
+                    y={pt.y}
+                    radius={6}
+                    fill="#00a1ff"
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                    draggable
+                    onDragStart={(e) => {
+                      e.cancelBubble = true;
+                      handleControlPointDragStart(id, idx);
+                    }}
+                    onDragMove={(e) => {
+                      e.cancelBubble = true;
+                      handleControlPointDrag(e, id, idx);
+                    }}
+                    onDragEnd={(e) => {
+                      e.cancelBubble = true;
+                      handleControlPointDragEnd();
+                    }}
+                    onClick={(e) => {
+                      e.cancelBubble = true;
+                    }}
+                    hitStrokeWidth={10}
+                    listening={true}
+                  />
+                ))}
               </React.Fragment>
             );
           })}
