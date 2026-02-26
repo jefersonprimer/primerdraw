@@ -94,7 +94,7 @@ export function OpenModal({ isOpen, onClose, currentElements, onReplace, element
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center">
+      <div className="fixed inset-0 z-200 flex items-center justify-center">
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
         <div className="relative bg-white dark:bg-[#1C1C1C] rounded-xl shadow-2xl p-6 border border-neutral-200 dark:border-neutral-800">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">Loading file...</p>
@@ -108,7 +108,7 @@ export function OpenModal({ isOpen, onClose, currentElements, onReplace, element
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+    <div className="fixed inset-0 z-200 flex items-center justify-center">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"

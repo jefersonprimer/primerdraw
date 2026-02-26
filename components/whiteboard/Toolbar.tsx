@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Hand, MousePointer2, Square, Circle, Type, Minus, Triangle, ArrowRight, Pencil, Image as ImageIcon, Eraser, Diamond, Trash2, Sun, Moon, Globe2, Pointer, LassoSelect, ChevronDown, Check, Hash } from 'lucide-react';
+import { Hand, MousePointer2, Square, Circle, Type, Minus, Triangle, ArrowRight, Pencil, Image as ImageIcon, Eraser, Diamond, Trash2, Sun, Moon, Globe2, LassoSelect, ChevronDown, Check, Hash } from 'lucide-react';
 import LaserIcon from '@/app/components/LaserIcon';
 import { useTheme } from '@/app/contexts/ThemeContext';
 

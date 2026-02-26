@@ -52,7 +52,7 @@ function ArrowheadStylePicker({ value, onChange }: { value: 'triangle' | 'circle
         <ChevronDown size={16} className={`text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 py-1 bg-white dark:bg-[#1C1C1C] border border-gray-100 dark:border-neutral-700 rounded-lg shadow-lg z-[60]">
+        <div className="absolute left-0 right-0 top-full mt-1 py-1 bg-white dark:bg-[#1C1C1C] border border-gray-100 dark:border-neutral-700 rounded-lg shadow-lg z-60">
           {ARROWHEAD_STYLES.map(({ id, label, icon }) => (
             <button
               key={id}
@@ -242,7 +242,7 @@ export function PropertiesPanel({
                 {c === 'transparent' && <Minus size={14} className="rotate-45 text-gray-400 dark:text-neutral-500" />}
               </button>
             ))}
-            <div className="w-[1.5px] h-5 bg-gray-200 dark:bg-neutral-600 mx-1 flex-shrink-0" />
+            <div className="w-[1.5px] h-5 bg-gray-200 dark:bg-neutral-600 mx-1 shrink-0" />
             <div className="relative w-7 h-7 rounded-lg border border-gray-100 dark:border-neutral-700 overflow-hidden cursor-pointer hover:border-gray-300 dark:hover:border-neutral-600 transition-all shadow-sm">
               <input 
                 type="color" 
