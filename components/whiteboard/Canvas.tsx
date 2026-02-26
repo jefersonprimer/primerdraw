@@ -8,6 +8,7 @@ import { Tool, ExtraTool } from './Toolbar';
 import Konva from 'konva';
 import useImage from 'use-image';
 import { useTheme } from '@/app/contexts/ThemeContext';
+import { Pencil } from 'lucide-react';
 
 function detectUrlType(url: string): 'image' | 'video' | 'youtube' | 'vimeo' | 'unknown' {
   const trimmedUrl = url.trim().toLowerCase();
@@ -484,6 +485,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [draggingControlPoint, setDraggingControlPoint] = useState<{ elementId: string; pointIndex: number } | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [interactingEmbedId, setInteractingEmbedId] = useState<string | null>(null);
+  const [webEmbedUrlEdits, setWebEmbedUrlEdits] = useState<Record<string, string>>({});
 
   const elementsRef = useRef(elements);
   useEffect(() => {
@@ -758,8 +760,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
 
     if (extraTool === 'web-embed') {
-      const url = typeof window !== 'undefined' ? window.prompt('Cole a URL que deseja embedar') : null;
-      if (!url) return;
       const id = nanoid();
       const element: WhiteboardElement = {
         id,
@@ -768,7 +768,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         y: pos.y,
         width: 400,
         height: 250,
-        text: url,
+        text: '',
         stroke: defaultProps.stroke ?? (isDark ? DEFAULT_STROKE_DARK : DEFAULT_STROKE_LIGHT),
         fill: isDark ? '#020617' : '#f9fafb',
         strokeWidth: 2,
@@ -1485,6 +1485,24 @@ export const Canvas: React.FC<CanvasProps> = ({
   // Collect web-embed elements that need HTML overlay rendering
   const webEmbedElements = elements.filter(el => el.type === 'web-embed');
 
+  const commitWebEmbedUrl = useCallback(
+    (id: string, value: string) => {
+      const currentElements = elementsRef.current;
+      const updated = currentElements.map((el) =>
+        el.id === id ? { ...el, text: value } : el
+      );
+      elementsRef.current = updated;
+      setElements(updated);
+      saveHistory(updated);
+      setWebEmbedUrlEdits((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    },
+    [saveHistory, setElements]
+  );
+
   return (
     <div className={`w-full h-screen ${canvasBackground} overflow-hidden relative`}>
       <Stage
@@ -1805,6 +1823,18 @@ export const Canvas: React.FC<CanvasProps> = ({
                     stroke={resolveStroke(el.stroke)}
                     strokeWidth={el.strokeWidth}
                   />
+                  {/* Empty state */}
+                  {!url.trim() && (
+                    <Text
+                      x={0}
+                      y={h / 2 - 10}
+                      width={w}
+                      text="Empty Web-Embed"
+                      fontSize={14}
+                      fill="#9ca3af"
+                      align="center"
+                    />
+                  )}
                   {urlType === 'image' && (
                     <WebEmbedImage url={url} width={w} height={h} />
                   )}
@@ -2147,6 +2177,150 @@ export const Canvas: React.FC<CanvasProps> = ({
               }}
             >
               {content}
+            </div>
+          );
+        })}
+
+        {/* URL editor for selected web-embeds */}
+        {webEmbedElements.map((el) => {
+          if (!selectedIds.includes(el.id) || activeTool !== 'select') return null;
+
+          const w = el.width ?? 400;
+          const h = el.height ?? 250;
+          const currentValue = webEmbedUrlEdits[el.id] ?? (el.text ?? '');
+
+          const screenX = stagePosition.x + el.x * zoom;
+          const screenY = stagePosition.y + el.y * zoom;
+          const screenW = w * zoom;
+          const controlHeight = 34;
+          const marginBottom = 6;
+
+          const left = screenX;
+          const top = screenY - controlHeight - marginBottom;
+
+          return (
+            <div
+              key={`editor-${el.id}`}
+              style={{
+                position: 'absolute',
+                left,
+                top,
+                width: screenW,
+                height: controlHeight,
+                pointerEvents: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '4px 8px',
+                borderRadius: 9999,
+                backgroundColor: isDark ? 'rgba(15,23,42,0.98)' : 'rgba(255,255,255,0.98)',
+                boxShadow: '0 10px 25px rgba(15,23,42,0.25)',
+                border: `1px solid ${isDark ? 'rgba(55,65,81,0.9)' : 'rgba(209,213,219,0.9)'}`,
+                boxSizing: 'border-box',
+              }}
+            >
+              <input
+                id={`web-embed-input-${el.id}`}
+                type="text"
+                value={currentValue}
+                onChange={(e) =>
+                  setWebEmbedUrlEdits((prev) => ({
+                    ...prev,
+                    [el.id]: e.target.value,
+                  }))
+                }
+                onBlur={(e) => commitWebEmbedUrl(el.id, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitWebEmbedUrl(el.id, (e.target as HTMLInputElement).value);
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setWebEmbedUrlEdits((prev) => {
+                      const next = { ...prev };
+                      delete next[el.id];
+                      return next;
+                    });
+                  }
+                }}
+                placeholder="No link is set"
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  fontSize: 13,
+                  color: isDark ? '#e5e7eb' : '#111827',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.getElementById(
+                    `web-embed-input-${el.id}`
+                  ) as HTMLInputElement | null;
+                  input?.focus();
+                  input?.select();
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 22,
+                  height: 22,
+                  borderRadius: 9999,
+                  border: 'none',
+                  backgroundColor: isDark ? 'rgba(31,41,55,1)' : 'rgba(243,244,246,1)',
+                  color: isDark ? '#e5e7eb' : '#4b5563',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                type="button"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 22,
+                  height: 22,
+                  borderRadius: 9999,
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  color: isDark ? '#9ca3af' : '#9ca3af',
+                  cursor: 'default',
+                  padding: 0,
+                }}
+                aria-hidden="true"
+              >
+                <svg
+                  aria-hidden="true"
+                  focusable="false"
+                  role="img"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  strokeWidth="2"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ width: 16, height: 16 }}
+                >
+                  <g>
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                    <path d="M5 5m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path>
+                    <path d="M19 5m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path>
+                    <path d="M5 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path>
+                    <path d="M19 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path>
+                    <path d="M5 7l0 10"></path>
+                    <path d="M7 5l10 0"></path>
+                    <path d="M7 19l10 0"></path>
+                    <path d="M19 7l0 10"></path>
+                  </g>
+                </svg>
+              </button>
             </div>
           );
         })}
