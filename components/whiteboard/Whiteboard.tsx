@@ -521,7 +521,7 @@ export default function Whiteboard() {
       )}
 
       {/* Bottom Left Controls */}
-      <div className="fixed bottom-4 left-4 flex items-center gap-2 z-50">
+      <div className="fixed bottom-20 md:bottom-4 left-4 flex items-center gap-2 z-50">
         {/* Zoom Control */}
         <div className="flex items-center bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-1 gap-2">
           <button
@@ -565,7 +565,7 @@ export default function Whiteboard() {
       </div>
 
       {/* Bottom Right Controls */}
-      <div className="fixed bottom-4 right-4 flex items-center gap-2 z-50">
+      <div className="fixed bottom-20 md:bottom-4 right-4 flex items-center gap-2 z-50">
         <div
           className="flex items-center bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-2 text-blue-400 cursor-help"
           title="seus desenhos sao salvos em seu proprio navegador, eles nao sao mandados para nossos servidores"

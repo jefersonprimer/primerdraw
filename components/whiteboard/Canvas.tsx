@@ -1160,18 +1160,38 @@ export const Canvas: React.FC<CanvasProps> = ({
         node.scaleX(1);
         node.scaleY(1);
       } else if (element.type === 'circle') {
-        updatedElement.width = (node as any).radiusX() * 2 * node.scaleX();
-        updatedElement.height = (node as any).radiusY() * 2 * node.scaleY();
-        updatedElement.x = node.x() - (updatedElement.width / 2);
-        updatedElement.y = node.y() - (updatedElement.height / 2);
+        // Circles (including hand‑drawn ones) are rendered either as Ellipse or generic Shape,
+        // so we can't rely on radiusX()/radiusY() always existing. Use the element's
+        // logical width/height and the node's scale instead, then recenter.
+        const baseWidth = element.width ?? (typeof (node as any).width === 'function' ? (node as any).width() : 0);
+        const baseHeight = element.height ?? (typeof (node as any).height === 'function' ? (node as any).height() : 0);
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+        const newWidth = baseWidth * scaleX;
+        const newHeight = baseHeight * scaleY;
+
+        updatedElement.width = newWidth;
+        updatedElement.height = newHeight;
+        updatedElement.x = node.x() - newWidth / 2;
+        updatedElement.y = node.y() - newHeight / 2;
+
         node.scaleX(1);
         node.scaleY(1);
       } else if (element.type === 'triangle' || element.type === 'diamond') {
-        const baseRadius = (node as any).radius();
-        updatedElement.width = baseRadius * 2 * node.scaleX();
-        updatedElement.height = baseRadius * 2 * node.scaleY();
-        updatedElement.x = node.x() - (updatedElement.width / 2);
-        updatedElement.y = node.y() - (updatedElement.height / 2);
+        // Triangles/diamonds may also be rendered as RegularPolygon or generic Shape,
+        // so prefer logical width/height plus scale rather than radius().
+        const baseWidth = element.width ?? (typeof (node as any).width === 'function' ? (node as any).width() : 0);
+        const baseHeight = element.height ?? (typeof (node as any).height === 'function' ? (node as any).height() : 0);
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+        const newWidth = baseWidth * scaleX;
+        const newHeight = baseHeight * scaleY;
+
+        updatedElement.width = newWidth;
+        updatedElement.height = newHeight;
+        updatedElement.x = node.x() - newWidth / 2;
+        updatedElement.y = node.y() - newHeight / 2;
+
         node.scaleX(1);
         node.scaleY(1);
       } else if (element.type === 'arrow' || element.type === 'line') {

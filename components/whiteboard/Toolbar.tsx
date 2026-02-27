@@ -226,7 +226,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-1 flex gap-1 z-50 overflow-x-auto max-w-[95vw] items-center">
+    <div className="fixed left-1/2 -translate-x-1/2 bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-neutral-800 rounded-lg shadow-lg p-1 flex gap-1 z-50 overflow-x-auto max-w-[95vw] items-center top-auto bottom-4 md:top-4 md:bottom-auto">
       {tools.map((tool) => {
         const shortcutNum = TOOL_SHORTCUT_NUMBER[tool.id];
         const shortcutLetter = TOOL_SHORTCUT_LETTER[tool.id];

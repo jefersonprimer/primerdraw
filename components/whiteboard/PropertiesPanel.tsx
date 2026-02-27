@@ -5,7 +5,7 @@ import { WhiteboardElement } from '@/lib/db';
 import { useTheme } from '@/contexts/ThemeContext';
 import { 
   Minus, AlignLeft, AlignCenter, AlignRight,
-  Maximize, Square as SquareIcon,
+  Square as SquareIcon,
   Circle as CircleIcon, ArrowRight, ArrowDownToLine, MoveDown, MoveUp, ArrowUpToLine,
   ChevronDown, ArrowLeftRight
 } from 'lucide-react';
@@ -232,16 +232,29 @@ export function PropertiesPanel({
       {(isShape || isPencil || isText) && (
         <Section title="Background">
           <div className="flex items-center gap-1.5 w-full">
-            {BG_COLORS.map((c, i) => (
-              <button
-                key={c + i}
-                className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-all ${first.fill === c ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-[#1C1C1C] scale-110 shadow-sm' : 'border-gray-100 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'}`}
-                style={{ backgroundColor: c === 'transparent' ? 'white' : c }}
-                onClick={() => updateElements({ fill: c })}
-              >
-                {c === 'transparent' && <Minus size={14} className="rotate-45 text-gray-400 dark:text-neutral-500" />}
-              </button>
-            ))}
+            {BG_COLORS.map((c, i) => {
+              const isTransparent = c === 'transparent';
+              const transparentStyle: React.CSSProperties = {
+                backgroundColor: isDark ? '#111827' : '#ffffff',
+                backgroundImage: `
+                  linear-gradient(45deg, rgba(148, 163, 184, 0.5) 25%, transparent 25%, transparent 75%, rgba(148, 163, 184, 0.5) 75%, rgba(148, 163, 184, 0.5)),
+                  linear-gradient(45deg, rgba(148, 163, 184, 0.5) 25%, transparent 25%, transparent 75%, rgba(148, 163, 184, 0.5) 75%, rgba(148, 163, 184, 0.5))
+                `,
+                backgroundSize: '6px 6px',
+                backgroundPosition: '0 0, 3px 3px',
+              };
+
+              return (
+                <button
+                  key={c + i}
+                  className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-all ${first.fill === c ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-[#1C1C1C] scale-110 shadow-sm' : 'border-gray-100 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'}`}
+                  style={isTransparent ? transparentStyle : { backgroundColor: c }}
+                  onClick={() => updateElements({ fill: c })}
+                >
+                  {isTransparent }
+                </button>
+              );
+            })}
             <div className="w-[1.5px] h-5 bg-gray-200 dark:bg-neutral-600 mx-1 shrink-0" />
             <div className="relative w-7 h-7 rounded-lg border border-gray-100 dark:border-neutral-700 overflow-hidden cursor-pointer hover:border-gray-300 dark:hover:border-neutral-600 transition-all shadow-sm">
               <input 
