@@ -313,19 +313,13 @@ export function PropertiesPanel({
               className={`w-8 h-8 rounded-md border flex items-center justify-center transition-all ${first.sloppiness === value ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
             >
               {value === 0 && (
-                <svg width="24" height="8" viewBox="0 0 48 8" className="text-current">
-                  <line x1="2" y1="4" x2="46" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
+                <svg aria-hidden="true" focusable="false" role="img" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 12.038c1.655-.885 5.9-3.292 8.568-4.354 2.668-1.063.101 2.821 1.32 3.104 1.218.283 5.112-1.814 5.112-1.814" strokeWidth="1.25"></path></svg>
               )}
               {value === 1 && (
-                <svg width="24" height="8" viewBox="0 0 48 8" className="text-current">
-                  <path d="M2 4 Q10 3 18 4 T34 4 T46 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <svg aria-hidden="true" focusable="false" role="img" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 12.563c1.655-.886 5.9-3.293 8.568-4.355 2.668-1.062.101 2.822 1.32 3.105 1.218.283 5.112-1.814 5.112-1.814m-13.469 2.23c2.963-1.586 6.13-5.62 7.468-4.998 1.338.623-1.153 4.11-.132 5.595 1.02 1.487 6.133-1.43 6.133-1.43" strokeWidth="1.25"></path></svg>
               )}
               {value === 2 && (
-                <svg width="24" height="8" viewBox="0 0 48 8" className="text-current">
-                  <path d="M2 4.5 L10 3 L18 5 L26 2.5 L34 4.5 L42 3.5 L46 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <svg aria-hidden="true" focusable="false" role="img" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 11.936c1.737-.879 8.627-5.346 10.42-5.268 1.795.078-.418 5.138.345 5.736.763.598 3.53-1.789 4.235-2.147M2.929 9.788c1.164-.519 5.47-3.28 6.987-3.114 1.519.165 1 3.827 2.121 4.109 1.122.281 3.839-2.016 4.606-2.42" strokeWidth="1.25"></path></svg>
               )}
             </button>
           ))}
@@ -341,7 +335,7 @@ export function PropertiesPanel({
               onClick={() => updateElements({ edges: e })}
               className={`w-8 h-8 rounded-md border flex items-center justify-center transition-all ${first.edges === e ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-inner' : 'border-gray-50 dark:border-neutral-700 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'}`}
             >
-              {e === 'sharp' ? <SquareIcon size={18} /> : <CircleIcon size={18} />}
+              {e === 'sharp' ? <svg aria-hidden="true" focusable="false" role="img" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><svg strokeWidth="1.5"><path d="M3.33334 9.99998V6.66665C3.33334 6.04326 3.33403 4.9332 3.33539 3.33646C4.95233 3.33436 6.06276 3.33331 6.66668 3.33331H10"></path><path d="M13.3333 3.33331V3.34331"></path><path d="M16.6667 3.33331V3.34331"></path><path d="M16.6667 6.66669V6.67669"></path><path d="M16.6667 10V10.01"></path><path d="M3.33334 13.3333V13.3433"></path><path d="M16.6667 13.3333V13.3433"></path><path d="M3.33334 16.6667V16.6767"></path><path d="M6.66666 16.6667V16.6767"></path><path d="M10 16.6667V16.6767"></path><path d="M13.3333 16.6667V16.6767"></path><path d="M16.6667 16.6667V16.6767"></path></svg></svg> : <svg aria-hidden="true" focusable="false" role="img" viewBox="0 0 24 24" fill="none" strokeWidth="2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><g strokeWidth="1.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M4 12v-4a4 4 0 0 1 4 -4h4"></path><line x1="16" y1="4" x2="16" y2="4.01"></line><line x1="20" y1="4" x2="20" y2="4.01"></line><line x1="20" y1="8" x2="20" y2="8.01"></line><line x1="20" y1="12" x2="20" y2="12.01"></line><line x1="4" y1="16" x2="4" y2="16.01"></line><line x1="20" y1="16" x2="20" y2="16.01"></line><line x1="4" y1="20" x2="4" y2="20.01"></line><line x1="8" y1="20" x2="8" y2="20.01"></line><line x1="12" y1="20" x2="12" y2="20.01"></line><line x1="16" y1="20" x2="16" y2="20.01"></line><line x1="20" y1="20" x2="20" y2="20.01"></line></g></svg>}
             </button>
           ))}
         </Section>
@@ -448,10 +442,13 @@ export function PropertiesPanel({
       {/* LAYERS */}
       <Section title="Layers" className="mb-0">
         <div className="flex items-center gap-2">
-          <button onClick={() => onLayerChange('front')} title="To Front" className="w-8 h-8 p-1 bg-[#F1F0FE] dark:bg-[#363541] rounded-md hover:bg-[#363541]/80  flex items-center justify-center text-black dark:text-white transition-all"><ArrowDownToLine size={20} /></button>
-          <button onClick={() => onLayerChange('forward')} title="Forward" className="w-8 h-8 p-1 bg-[#F1F0FE] dark:bg-[#363541] rounded-md hover:bg-[#363541]/80  flex items-center justify-center text-black dark:text-white transition-all"><MoveDown size={20} /></button>
-          <button onClick={() => onLayerChange('backward')} title="Backward" className="w-8 h-8 p-1 bg-[#F1F0FE] dark:bg-[#363541] rounded-md hover:bg-[#363541]/80  flex items-center justify-center text-black dark:text-white transition-all"><MoveUp size={20} /></button>
-          <button onClick={() => onLayerChange('back')} title="To Back" className="w-8 h-8 p-1 bg-[#F1F0FE] dark:bg-[#363541] rounded-md hover:bg-[#363541]/80  flex items-center justify-center text-black dark:text-white transition-all"><ArrowUpToLine size={20} /></button>
+          <button onClick={() => onLayerChange('front')} title="To Front" className="w-8 h-8 p-1 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600  flex items-center justify-center text-black dark:text-white transition-all rounded-md"><ArrowDownToLine size={20} /></button>
+          
+          <button onClick={() => onLayerChange('forward')} title="Forward" className="w-8 h-8 p-1 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600 rounded-md  flex items-center justify-center text-black dark:text-white transition-all"><MoveDown size={20} /></button>
+          
+          <button onClick={() => onLayerChange('backward')} title="Backward" className="w-8 h-8 p-1 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600 rounded-md  flex items-center justify-center text-black dark:text-white transition-all"><MoveUp size={20} /></button>
+          
+          <button onClick={() => onLayerChange('back')} title="To Back" className="w-8 h-8 p-1 bg-gray-50/30 dark:bg-neutral-800/50 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600 rounded-md flex items-center justify-center text-black dark:text-white transition-all"><ArrowUpToLine size={20} /></button>
         </div>
       </Section>
 

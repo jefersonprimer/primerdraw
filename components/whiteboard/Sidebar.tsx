@@ -67,7 +67,7 @@ export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canva
   };
 
   return (
-    <div className="w-64 max-h-[calc(100vh-80px)] bg-white dark:bg-[#1C1C1C] border border-neutral-200 dark:border-neutral-800 rounded-xl p-2 flex flex-col text-sm overflow-y-auto shadow-2xl">
+    <div className="w-70 max-h-[calc(100vh-80px)] bg-white dark:bg-[#1C1C1C] border border-neutral-200 dark:border-neutral-800 rounded-xl p-2 flex flex-col text-sm overflow-y-auto shadow-2xl">
 
       {/* Top Section */}
       <div className="my-1">
@@ -133,11 +133,9 @@ export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canva
         <div className="px-2">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs text-[#1b1b1f] dark:text-white">{t('canvasBackground')}</p>
-            <BackgroundColorPicker
-              activeColor={resolveBackgroundColor(canvasBackground)}
-              onChangeColor={(color) => onCanvasBackgroundChange?.(color)}
-            />
+            
           </div>
+          <div className="flex items-center">
           {mounted && resolvedTheme === 'light' ? (
             <div className="flex gap-2 flex-wrap">
               <ColorSwatch color="bg-white" active={canvasBackground === 'bg-white'} onClick={() => onCanvasBackgroundChange?.('bg-white')} />
@@ -162,6 +160,13 @@ export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canva
               <ColorSwatch color="bg-neutral-100" active={canvasBackground === 'bg-neutral-100'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-100')} />
             </div>
           )}
+
+            <div className="w-[1.5px] h-5 bg-gray-200 dark:bg-neutral-600 mx-1 shrink-0" />
+            <BackgroundColorPicker
+              activeColor={resolveBackgroundColor(canvasBackground)}
+              onChangeColor={(color) => onCanvasBackgroundChange?.(color)}
+            />
+          </div>
         </div>
 
       </div>
@@ -306,7 +311,7 @@ function BackgroundColorPicker({ activeColor, onChangeColor }: BackgroundColorPi
           setAnchorRect(rect);
           setOpen((v) => !v);
         }}
-        className="w-7 h-7 rounded-full border border-neutral-300 dark:border-neutral-700 flex items-center justify-center shadow-sm hover:shadow-md transition-all hover:scale-105"
+        className="w-7 h-7 rounded-md border border-neutral-300 dark:border-neutral-700 flex items-center justify-center shadow-sm hover:shadow-md transition-all hover:scale-105"
         style={{ backgroundColor: activeColor }}
         title="Escolher qualquer cor de fundo"
       />

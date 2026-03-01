@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { Toolbar, Tool, ExtraTool } from './Toolbar';
 import { PropertiesPanel } from './PropertiesPanel';
 import { db, WhiteboardElement } from '@/lib/db';
@@ -25,7 +26,10 @@ const Canvas = dynamic(() => import('./Canvas').then((mod) => mod.Canvas), {
   ssr: false,
 });
 
+const TOOLS_WITH_CLICK_TOOLTIP = new Set<Tool>(['select', 'arrow', 'line', 'pencil', 'text', 'eraser']);
+
 export default function Whiteboard() {
+  const t = useTranslations('Whiteboard');
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [activeExtraTool, setActiveExtraTool] = useState<ExtraTool>('none');
   const [clickTooltipTool, setClickTooltipTool] = useState<Tool | null>(null);
@@ -78,28 +82,34 @@ export default function Whiteboard() {
   const TOOL_CLICK_TOOLTIP: Partial<Record<Tool, React.ReactNode>> = {
     select: (
       <>
-        To move canvas, hold <span className="p-0.5 border rounded">Scrool wheel</span> or{' '}
-        <span className="p-0.5 border rounded">Space</span> while dragging, or use the hand tool.
+        {t('toolClickTooltip.select.prefix')}{' '}
+        <span className="p-0.5 border rounded">{t('toolClickTooltip.select.scrollWheelKey')}</span>{' '}
+        {t('toolClickTooltip.select.middle')}{' '}
+        <span className="p-0.5 border rounded">{t('toolClickTooltip.select.spaceKey')}</span>{' '}
+        {t('toolClickTooltip.select.suffix')}
       </>
     ),
     arrow: (
       <>
-        Click to start multiple points, drag for single line. Press{' '}
-        <span className="p-0.5 border rounded">A</span> again to change arrow type.
+        {t('toolClickTooltip.arrow.prefix')}{' '}
+        <span className="p-0.5 border rounded">{t('toolClickTooltip.arrow.aKey')}</span>{' '}
+        {t('toolClickTooltip.arrow.suffix')}
       </>
     ),
-    line: <>Click to start mulple points, drag for single line.</>,
-    pencil: <>Click and drag, release when you are finished.</>,
-    text: <>Tip: you can also add text by double-clicking anywhere with the select tool.</>,
+    line: <>{t('toolClickTooltip.line')}</>,
+    pencil: <>{t('toolClickTooltip.pencil')}</>,
+    text: <>{t('toolClickTooltip.text')}</>,
     eraser: (
       <>
-        Hold <span className="p-0.5 border rounded">Alt</span> to revert the elements marked for deletion.
+        {t('toolClickTooltip.eraser.prefix')}{' '}
+        <span className="p-0.5 border rounded">{t('toolClickTooltip.eraser.altKey')}</span>{' '}
+        {t('toolClickTooltip.eraser.suffix')}
       </>
     ),
   };
 
   const handleToolbarToolClick = useCallback((tool: Tool) => {
-    setClickTooltipTool(TOOL_CLICK_TOOLTIP[tool] ? tool : null);
+    setClickTooltipTool(TOOLS_WITH_CLICK_TOOLTIP.has(tool) ? tool : null);
   }, []);
 
   useEffect(() => {

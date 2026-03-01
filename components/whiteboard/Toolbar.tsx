@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Hand, MousePointer2, Square, Circle, Type, Minus, Triangle, ArrowRight, Pencil, Image as ImageIcon, Eraser, Diamond, Trash2, Sun, Moon, Globe2, LassoSelect, ChevronDown, Check, Hash } from 'lucide-react';
-import LaserIcon from '@/components/LaserIcon';
+import LaserIcon from '../LaserIcon';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export type Tool = 'hand' | 'select' | 'rectangle' | 'diamond' | 'triangle' | 'circle' | 'arrow' | 'line' | 'pencil' | 'text' | 'image' | 'eraser';
@@ -49,18 +49,18 @@ const extraTools: { id: Exclude<ExtraTool, 'none'>; label: string; icon: React.R
 ];
 
 const tools: { id: Tool; icon: React.ReactNode; label: string; isAction?: boolean }[] = [
-  { id: 'hand', icon: <Hand size={18} />, label: 'Pan' },
-  { id: 'select', icon: <MousePointer2 size={18} />, label: 'Select' },
-  { id: 'rectangle', icon: <Square size={18} />, label: 'Rectangle' },
-  { id: 'diamond', icon: <Diamond size={18} />, label: 'Diamond' },
-  { id: 'triangle', icon: <Triangle size={18} />, label: 'Triangle' },
-  { id: 'circle', icon: <Circle size={18} />, label: 'Circle' },
-  { id: 'arrow', icon: <ArrowRight size={18} />, label: 'Arrow' },
-  { id: 'line', icon: <Minus size={18} />, label: 'Line' },
-  { id: 'pencil', icon: <Pencil size={18} />, label: 'Pencil' },
-  { id: 'text', icon: <Type size={18} />, label: 'Text' },
-  { id: 'image', icon: <ImageIcon size={18} />, label: 'Image' },
-  { id: 'eraser', icon: <Eraser size={18} />, label: 'Eraser' },
+  { id: 'hand', icon: <Hand size={18} />, label: 'Hand (panning tool) - H or null' },
+  { id: 'select', icon: <MousePointer2 size={18} />, label: 'Selection - S or 1' },
+  { id: 'rectangle', icon: <Square size={18} />, label: 'Rectangle - R or 2' },
+  { id: 'diamond', icon: <Diamond size={18} />, label: 'Diamond - D or 3' },
+  { id: 'triangle', icon: <Triangle size={18} />, label: 'Triangle - G or 4' },
+  { id: 'circle', icon: <Circle size={18} />, label: 'Circle - C or 5' },
+  { id: 'arrow', icon: <ArrowRight size={18} />, label: 'Arrow - A or 6' },
+  { id: 'line', icon: <Minus size={18} />, label: 'Line - L or 7' },
+  { id: 'pencil', icon: <Pencil size={18} />, label: 'Pencil - P or 8' },
+  { id: 'text', icon: <Type size={18} />, label: 'Text - T or 9' },
+  { id: 'image', icon: <ImageIcon size={18} />, label: 'Insert image - 0' },
+  { id: 'eraser', icon: <Eraser size={18} />, label: 'Eraser - E' },
 ];
 
 interface ExtraToolDropdownProps {
@@ -273,14 +273,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           onClick={handleThemeToggle}
           className="p-2 rounded-md transition-colors text-gray-600 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800"
-          title={resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+          title={resolvedTheme === 'dark' ? 'Light mode - Ctrl+L' : 'Dark mode - Ctrl+D'}
         >
           {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         <button
           onClick={onClearCanvas}
           className="p-2 rounded-md transition-colors text-gray-600 dark:text-neutral-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 dark:hover:text-red-400"
-          title="Clear Canvas (cc)"
+          title="Clear Canvas - CC"
         >
           <Trash2 size={18} />
         </button>

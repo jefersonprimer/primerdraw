@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface ClearCanvasModalProps {
   isOpen: boolean;
@@ -10,6 +10,8 @@ interface ClearCanvasModalProps {
 }
 
 export function ClearCanvasModal({ isOpen, onClose, onConfirm }: ClearCanvasModalProps) {
+  const t = useTranslations('ClearCanvasModal');
+
   if (!isOpen) return null;
 
   const handleConfirm = () => {
@@ -27,10 +29,10 @@ export function ClearCanvasModal({ isOpen, onClose, onConfirm }: ClearCanvasModa
      
         <div className="p-6">
           <div className="flex items-center justify-between border-b border-[#ebebeb] pb-4">
-            <h2 className="text-lg font-semibold text-[#1b1b1f] dark:text-white">Clear canvas</h2>
+            <h2 className="text-lg font-semibold text-[#1b1b1f] dark:text-white">{t('title')}</h2>
           </div>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 pt-4">
-            This will clear the whole canvas. Are you sure?
+            {t('description')}
           </p>
         </div>
         <div className="flex items-center justify-end gap-2 p-4">
@@ -38,13 +40,13 @@ export function ClearCanvasModal({ isOpen, onClose, onConfirm }: ClearCanvasModa
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             onClick={handleConfirm}
             className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors"
           >
-            Clear
+            {t('confirm')}
           </button>
         </div>
       </div>

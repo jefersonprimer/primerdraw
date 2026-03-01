@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Download, Link } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { saveToFile, generateDefaultFileName, getShareableLink } from '@/lib/fileService';
 import { WhiteboardElement } from '@/lib/db';
 import { ShareLinkModal } from './ShareLinkModal';
@@ -13,6 +14,7 @@ interface SaveModalProps {
 }
 
 export function SaveModal({ isOpen, onClose, elements }: SaveModalProps) {
+  const t = useTranslations('SaveModal');
   const [filename, setFilename] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [shareLinkModalOpen, setShareLinkModalOpen] = useState(false);
@@ -26,7 +28,7 @@ export function SaveModal({ isOpen, onClose, elements }: SaveModalProps) {
 
   const handleSave = async () => {
     if (!filename.trim()) {
-      alert('Please enter a file name');
+      alert(t('alerts.enterFileName'));
       return;
     }
 
@@ -35,7 +37,7 @@ export function SaveModal({ isOpen, onClose, elements }: SaveModalProps) {
       await saveToFile(elements, filename.trim());
       onClose();
     } catch (error) {
-      alert(`Failed to save file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(t('alerts.saveFailed', { message: error instanceof Error ? error.message : t('alerts.unknownError') }));
     } finally {
       setIsSaving(false);
     }
@@ -67,27 +69,28 @@ export function SaveModal({ isOpen, onClose, elements }: SaveModalProps) {
         />
 
         {/* Modal */}
-        <div className="relative bg-white dark:bg-[#1C1C1C] rounded-xl shadow-2xl w-full max-w-md mx-4 border border-neutral-200 dark:border-neutral-800 max-h-[90vh] overflow-y-auto">
+        <div className="relative bg-white dark:bg-[#1C1C1C] rounded-xl shadow-2xl w-full max-w-[300px] md:max-w-[700px] mx-4 border border-neutral-200 dark:border-neutral-800 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800">
-            <h2 className="text-lg font-semibold text-[#1b1b1f] dark:text-white">Save to</h2>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 transition-colors"
-            >
-              <X size={20} />
-            </button>
+            <h2 className="text-lg font-semibold text-[#1b1b1f] dark:text-white">{t('title')}</h2>
+          
           </div>
 
-          <div className="p-6 space-y-8">
+          <div className="flex flex-col md:flex-row items-stretch justify-center p-6 gap-8">
             {/* Save to disk */}
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-[#1b1b1f] dark:text-white">Save to disk</h3>
+            <section className="flex flex-col items-center justify-center space-y-2 w-full md:w-1/2">
+
+              <div className="flex flex-col items-center justify-center">
+                <span className="p-4 bg-blue-400 rounded-full">
+                  <Download size={32}/>
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-[#1b1b1f] dark:text-white">{t('saveToDisk.title')}</h3>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                Export the scene data to a file from which you can import later.
+                {t('saveToDisk.description')}
               </p>
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-[#1b1b1f] dark:text-white">
-                  File name:
+                  {t('saveToDisk.fileNameLabel')}
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -96,7 +99,7 @@ export function SaveModal({ isOpen, onClose, elements }: SaveModalProps) {
                     onChange={(e) => setFilename(e.target.value)}
                     onKeyDown={handleKeyDown}
                     className="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md text-sm text-[#1b1b1f] dark:text-white bg-white dark:bg-neutral-800 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-                    placeholder="Enter file name"
+                    placeholder={t('saveToDisk.fileNamePlaceholder')}
                     autoFocus
                   />
                   <span className="text-sm text-neutral-500 dark:text-neutral-400">.pwb</span>
@@ -105,34 +108,31 @@ export function SaveModal({ isOpen, onClose, elements }: SaveModalProps) {
               <button
                 onClick={handleSave}
                 disabled={isSaving || !filename.trim()}
-                className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className=" px-4 py-2 mt-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSaving ? 'Saving...' : 'Save to file'}
+                {isSaving ? t('saveToDisk.saving') : t('saveToDisk.saveButton')}
               </button>
             </section>
 
             {/* Shareable link */}
-            <section className="space-y-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
-              <h3 className="text-sm font-semibold text-[#1b1b1f] dark:text-white">Shareable link</h3>
+            <section className="flex flex-col items-center p-6 space-y-2 w-full md:w-1/2">
+
+              <div className="flex flex-col items-center justify-center">
+                <span className="p-4 bg-blue-400 rounded-full">
+                  <Link size={32}/>
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-[#1b1b1f] dark:text-white">{t('shareableLink.title')}</h3>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                Export as a read-only link.
+                {t('shareableLink.description')}
               </p>
               <button
                 onClick={handleExportToLink}
-                className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
+                className="w-full px-4 py-2 mt-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
               >
-                Export to link
+                {t('shareableLink.exportButton')}
               </button>
             </section>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 p-4 border-t border-neutral-200 dark:border-neutral-800">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
-            >
-              Cancel
-            </button>
           </div>
         </div>
       </div>

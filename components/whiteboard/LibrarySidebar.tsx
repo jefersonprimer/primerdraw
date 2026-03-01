@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { X, Upload, Trash2, BookOpen, Package } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { parseExcalidrawLib, convertLibraryItem, LibraryItem, ExcalidrawElement } from '@/lib/excalidrawAdapter';
 
 const STORAGE_KEY = 'opendraw-library';
@@ -12,7 +13,7 @@ type Props = {
 
 // ─── SVG Mini-Thumbnail renderer ───────────────────────────────────────────────
 
-function ThumbnailSVG({ elements }: { elements: ExcalidrawElement[] }) {
+function ThumbnailSVG({ elements, emptyLabel }: { elements: ExcalidrawElement[]; emptyLabel: string }) {
   const THUMB_W = 120;
   const THUMB_H = 90;
 
@@ -24,7 +25,7 @@ function ThumbnailSVG({ elements }: { elements: ExcalidrawElement[] }) {
       <svg width={THUMB_W} height={THUMB_H} viewBox={`0 0 ${THUMB_W} ${THUMB_H}`}>
         <rect width={THUMB_W} height={THUMB_H} fill="transparent" />
         <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#9ca3af">
-          Empty
+          {emptyLabel}
         </text>
       </svg>
     );
@@ -184,6 +185,7 @@ function ThumbnailSVG({ elements }: { elements: ExcalidrawElement[] }) {
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function LibrarySidebar({ onClose }: Props) {
+  const t = useTranslations('LibrarySidebar');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -221,14 +223,15 @@ export default function LibrarySidebar({ onClose }: Props) {
         const newItems = parsed.filter(i => !existingIds.has(i.id));
         return [...prev, ...newItems];
       });
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to import library');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t('errors.importFailed');
+      setError(message);
     } finally {
       setImporting(false);
       // Reset so the same file can be re-imported
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, []);
+  }, [t]);
 
   const handleRemoveItem = useCallback((id: string) => {
     setItems(prev => prev.filter(i => i.id !== id));
@@ -250,13 +253,13 @@ export default function LibrarySidebar({ onClose }: Props) {
       className="flex flex-col w-[320px] max-w-[90vw] h-[calc(100vh-88px)] bg-white dark:bg-[#1C1C1C] border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-2xl overflow-hidden"
       role="dialog"
       aria-modal="true"
-      aria-label="Library"
+      aria-label={t('aria.library')}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
         <div className="flex items-center gap-2">
           <BookOpen size={16} className="text-blue-500" />
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">Library</span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">{t('title')}</span>
           {items.length > 0 && (
             <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-600 px-1.5 py-0.5 rounded-full font-medium">
               {items.length}
@@ -266,7 +269,7 @@ export default function LibrarySidebar({ onClose }: Props) {
         <button
           onClick={onClose}
           className="p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 text-gray-500 dark:text-neutral-400 transition-colors"
-          title="Close"
+          title={t('actions.close')}
         >
           <X size={16} />
         </button>
@@ -287,7 +290,7 @@ export default function LibrarySidebar({ onClose }: Props) {
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-sm font-medium transition-colors border border-blue-200 dark:border-blue-800 disabled:opacity-50"
         >
           <Upload size={15} />
-          {importing ? 'Importing…' : 'Import .excalidrawlib'}
+          {importing ? t('actions.importing') : t('actions.importButton')}
         </button>
 
         {error && (
@@ -303,9 +306,9 @@ export default function LibrarySidebar({ onClose }: Props) {
               <Package size={22} className="text-neutral-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-neutral-300">No library items yet</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-neutral-300">{t('empty.title')}</p>
               <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">
-                Import an <span className="font-mono">.excalidrawlib</span> file to get started
+                {t('empty.descriptionPrefix')} <span className="font-mono">.excalidrawlib</span> {t('empty.descriptionSuffix')}
               </p>
             </div>
           </div>
@@ -316,11 +319,11 @@ export default function LibrarySidebar({ onClose }: Props) {
                 key={item.id}
                 className="group relative rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 overflow-hidden cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-md transition-all"
                 onClick={() => handleInsert(item)}
-                title={`Insert "${item.name}"`}
+                title={t('actions.insertItemTitle', { name: item.name })}
               >
                 {/* Thumbnail */}
                 <div className="flex items-center justify-center bg-white dark:bg-neutral-900 p-1 h-[76px]">
-                  <ThumbnailSVG elements={item.elements} />
+                  <ThumbnailSVG elements={item.elements} emptyLabel={t('thumbnail.empty')} />
                 </div>
 
                 {/* Label */}
@@ -331,7 +334,7 @@ export default function LibrarySidebar({ onClose }: Props) {
                   <button
                     className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-400 hover:text-red-500 shrink-0 ml-1"
                     onClick={e => { e.stopPropagation(); handleRemoveItem(item.id); }}
-                    title="Remove"
+                    title={t('actions.remove')}
                   >
                     <Trash2 size={11} />
                   </button>
@@ -346,7 +349,7 @@ export default function LibrarySidebar({ onClose }: Props) {
       {items.length > 0 && (
         <div className="px-4 py-2 border-t border-neutral-200 dark:border-neutral-800 shrink-0">
           <p className="text-[10px] text-center text-gray-400 dark:text-neutral-600">
-            Click any item to insert it on the canvas
+            {t('footerHint')}
           </p>
         </div>
       )}

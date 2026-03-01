@@ -1,31 +1,35 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface ShortcutsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 const shortcuts = [
-  { key: 'H', action: 'Hand (Pan)' },
-  { key: 'S', action: 'Select' },
-  { key: 'R', action: 'Rectangle' },
-  { key: 'D', action: 'Diamond' },
-  { key: 'G', action: 'Triangle' },
-  { key: 'C', action: 'Circle' },
-  { key: 'A', action: 'Arrow' },
-  { key: 'L', action: 'Line' },
-  { key: 'P', action: 'Pencil' },
-  { key: 'T', action: 'Text' },
-  { key: 'I', action: 'Image' },
-  { key: 'E', action: 'Eraser' },
-  { key: '1-0', action: 'Same tools (number keys)' },
-  { key: 'Ctrl+D', action: 'Dark theme' },
-  { key: 'Ctrl+L', action: 'Light theme' },
-  { key: 'cc', action: 'Clear canvas (press C twice)' },
-  { key: '?', action: 'Show shortcuts' },
+  { key: 'H', actionKey: 'handPan' },
+  { key: 'S', actionKey: 'select' },
+  { key: 'R', actionKey: 'rectangle' },
+  { key: 'D', actionKey: 'diamond' },
+  { key: 'G', actionKey: 'triangle' },
+  { key: 'C', actionKey: 'circle' },
+  { key: 'A', actionKey: 'arrow' },
+  { key: 'L', actionKey: 'line' },
+  { key: 'P', actionKey: 'pencil' },
+  { key: 'T', actionKey: 'text' },
+  { key: 'I', actionKey: 'image' },
+  { key: 'E', actionKey: 'eraser' },
+  { key: '1-0', actionKey: 'sameToolsNumberKeys' },
+  { key: 'Ctrl+D', actionKey: 'darkTheme' },
+  { key: 'Ctrl+L', actionKey: 'lightTheme' },
+  { key: 'cc', actionKey: 'clearCanvasDoubleC' },
+  { key: '?', actionKey: 'showShortcuts' },
 ];
 
 export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
+  const t = useTranslations('ShortcutsModal');
+
   if (!isOpen) return null;
 
   return (
@@ -37,17 +41,17 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
       <div className="relative bg-white dark:bg-[#1C1C1C] rounded-xl shadow-2xl w-full max-w-md mx-4 border border-neutral-200 dark:border-neutral-800">
         <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800">
           <h2 className="text-lg font-semibold text-[#1b1b1f] dark:text-white">
-            Keyboard Shortcuts
+            {t('title')}
           </h2>
         </div>
         <div className="p-6 space-y-2 max-h-[60vh] overflow-y-auto">
-          {shortcuts.map(({ key, action }) => (
+          {shortcuts.map(({ key, actionKey }) => (
             <div
               key={key}
               className="flex items-center justify-between py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0"
             >
               <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                {action}
+                {t(`shortcuts.${actionKey}`)}
               </span>
               <kbd className="px-2 py-1 text-xs font-mono bg-neutral-100 dark:bg-neutral-800 rounded text-neutral-700 dark:text-neutral-300">
                 {key}
@@ -57,7 +61,7 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
         </div>
         <div className="p-4 border-t border-neutral-200 dark:border-neutral-800">
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Press the number key or letter to switch tools quickly.
+            {t('footerHint')}
           </p>
         </div>
       </div>
