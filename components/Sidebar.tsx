@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -31,7 +31,7 @@ type SidebarProps = {
   canvasBackground?: string;
   onCanvasBackgroundChange?: (color: string) => void;
   onLiveCollaborationClick?: () => void;
-}
+};
 
 const BG_CLASS_TO_COLOR: Record<string, string> = {
   "bg-white": "#ffffff",
@@ -54,66 +54,120 @@ function resolveBackgroundColor(value: string): string {
   return value || "#f9fafb";
 }
 
-export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canvasBackground = 'bg-gray-50', onCanvasBackgroundChange, onLiveCollaborationClick }: SidebarProps) {
+export default function Sidebar({
+  onOpenClick,
+  onSaveClick,
+  onResetCanvas,
+  canvasBackground = "bg-gray-50",
+  onCanvasBackgroundChange,
+  onLiveCollaborationClick,
+}: SidebarProps) {
   const { theme, setTheme, resolvedTheme, mounted } = useTheme();
-  const t = useTranslations('Sidebar');
+  const t = useTranslations("Sidebar");
   const locale = useLocale();
   const router = useRouter();
 
-  const handleLocaleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLocale = e.target.value as 'en' | 'pt-BR';
+  const handleLocaleChange = async (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    const newLocale = e.target.value as "en" | "pt-BR";
     await setLocale(newLocale);
     router.refresh();
   };
 
   return (
-    <div className="w-60 md:70 max-h-[calc(100dvh-150px)] bg-white dark:bg-[#1C1C1C] border border-neutral-200 dark:border-neutral-800 rounded-xl p-2 flex flex-col text-sm overflow-y-auto shadow-2xl">
-
+    <div className="w-64 md:70 max-h-[calc(100dvh-150px)] bg-white dark:bg-[#1C1C1C] border border-neutral-200 dark:border-neutral-800 rounded-xl p-2 flex flex-col text-sm overflow-y-auto shadow-2xl">
       {/* Top Section */}
       <div className="my-1">
-
-        <MenuItem icon={<FolderOpen size={16} />} label={t('open')} shortcut="Ctrl+O" onClick={onOpenClick} />
-        <MenuItem icon={<Save size={16} />} label={t('saveTo')} onClick={onSaveClick} />
-        <MenuItem icon={<ImageIcon size={16} />} label={t('exportImage')} shortcut="Ctrl+Shift+E" />
-        <MenuItem icon={<Users size={16} />} label={t('liveCollaboration')} onClick={onLiveCollaborationClick}/>
-        <MenuItem icon={<Command size={16} />} label={t('commandPalette')} shortcut="Ctrl+/" highlight />
-        <MenuItem icon={<Search size={16} />} label={t('findOnCanvas')} shortcut="Ctrl+F" />
-        <MenuItem icon={<HelpCircle size={16} />} label={t('help')} shortcut="?" />
-        <MenuItem icon={<Trash2 size={16} />} label={t('resetCanvas')} isResetCanvas onClick={onResetCanvas} />
-
+        <MenuItem
+          icon={<FolderOpen size={16} />}
+          label={t("open")}
+          shortcut="Ctrl+O"
+          onClick={onOpenClick}
+        />
+        <MenuItem
+          icon={<Save size={16} />}
+          label={t("saveTo")}
+          onClick={onSaveClick}
+        />
+        <MenuItem
+          icon={<ImageIcon size={16} />}
+          label={t("exportImage")}
+          shortcut="Ctrl+Shift+E"
+        />
+        <MenuItem
+          icon={<Users size={16} />}
+          label={t("liveCollaboration")}
+          onClick={onLiveCollaborationClick}
+        />
+        <MenuItem
+          icon={<Command size={16} />}
+          label={t("commandPalette")}
+          shortcut="Ctrl+/"
+          highlight
+        />
+        <MenuItem
+          icon={<Search size={16} />}
+          label={t("findOnCanvas")}
+          shortcut="Ctrl+F"
+        />
+        <MenuItem
+          icon={<HelpCircle size={16} />}
+          label={t("help")}
+          shortcut="?"
+        />
+        <MenuItem
+          icon={<Trash2 size={16} />}
+          label={t("resetCanvas")}
+          isResetCanvas
+          onClick={onResetCanvas}
+        />
       </div>
 
       <Divider />
 
       {/* Links */}
       <div>
-        <MenuItem icon={<ImageIcon size={16} />} label={t('excalidrawPlus')} />
-        <MenuItem icon={<Github size={16} />} label={t('github')} />
-        <MenuItem icon={<Twitter size={16} />} label={t('followUs')} />
-        <MenuItem icon={<MessageCircle size={16} />} label={t('discordChat')} />
-        <MenuItem icon={<LogIn size={16} />} label={t('signUp')} highlight />
+        <MenuItem icon={<ImageIcon size={16} />} label={t("excalidrawPlus")} />
+        <MenuItem icon={<Github size={16} />} label={t("github")} />
+        <MenuItem icon={<Twitter size={16} />} label={t("followUs")} />
+        <MenuItem icon={<MessageCircle size={16} />} label={t("discordChat")} />
+        <MenuItem icon={<LogIn size={16} />} label={t("signUp")} highlight />
       </div>
 
       <Divider />
 
       {/* Preferences */}
       <div className="space-y-3">
-
         <div className="flex items-center justify-between px-2 py-1 rounded-md text-[#1b1b1f] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer">
           <div className="flex items-center gap-2">
             <SlidersHorizontal size={16} />
-            <span>{t('preferences')}</span>
+            <span>{t("preferences")}</span>
           </div>
         </div>
 
         {/* Theme */}
         <div className="flex items-center justify-between px-2">
-          <p className="text-sm text-[#1b1b1f] dark:text-white mb-2">{t('theme')}</p>
+          <p className="text-sm text-[#1b1b1f] dark:text-white mb-2">
+            {t("theme")}
+          </p>
 
           <div className="flex rounded-xl p-1 border border-[#f1f0ff] dark:border-neutral-800">
-            <ThemeButton active={theme === 'light'} icon={<Sun size={16} />} onClick={() => setTheme('light')} />
-            <ThemeButton active={theme === 'dark'} icon={<Moon size={16} />} onClick={() => setTheme('dark')} />
-            <ThemeButton active={theme === 'system'} icon={<Monitor size={16} />} onClick={() => setTheme('system')} />
+            <ThemeButton
+              active={theme === "light"}
+              icon={<Sun size={16} />}
+              onClick={() => setTheme("light")}
+            />
+            <ThemeButton
+              active={theme === "dark"}
+              icon={<Moon size={16} />}
+              onClick={() => setTheme("dark")}
+            />
+            <ThemeButton
+              active={theme === "system"}
+              icon={<Monitor size={16} />}
+              onClick={() => setTheme("system")}
+            />
           </div>
         </div>
 
@@ -124,42 +178,89 @@ export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canva
             onChange={handleLocaleChange}
             className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-md px-3 py-2 text-sm text-[#1b1b1f] dark:text-white outline-none focus:ring-2 focus:ring-blue-400"
           >
-            <option value="en">{t('english')}</option>
-            <option value="pt-BR">{t('portuguese')}</option>
+            <option value="en">{t("english")}</option>
+            <option value="pt-BR">{t("portuguese")}</option>
           </select>
         </div>
 
         {/* Canvas background */}
         <div className="px-2">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-[#1b1b1f] dark:text-white">{t('canvasBackground')}</p>
-            
+            <p className="text-xs text-[#1b1b1f] dark:text-white">
+              {t("canvasBackground")}
+            </p>
           </div>
           <div className="flex items-center">
-          {mounted && resolvedTheme === 'light' ? (
-            <div className="flex gap-2 flex-wrap">
-              <ColorSwatch color="bg-white" active={canvasBackground === 'bg-white'} onClick={() => onCanvasBackgroundChange?.('bg-white')} />
-              <ColorSwatch color="bg-gray-50" active={canvasBackground === 'bg-gray-50'} onClick={() => onCanvasBackgroundChange?.('bg-gray-50')} />
-              <ColorSwatch color="bg-neutral-100" active={canvasBackground === 'bg-neutral-100'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-100')} />
-              <ColorSwatch color="bg-neutral-200" active={canvasBackground === 'bg-neutral-200'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-200')} />
-              <ColorSwatch color="bg-neutral-300" active={canvasBackground === 'bg-neutral-300'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-300')} />
-              <ColorSwatch color="bg-yellow-100" active={canvasBackground === 'bg-yellow-100'} onClick={() => onCanvasBackgroundChange?.('bg-yellow-100')} />
-            </div>
-          ) : mounted && resolvedTheme === 'dark' ? (
-            <div className="flex gap-2 flex-wrap">
-              <ColorSwatch color="bg-neutral-900" active={canvasBackground === 'bg-neutral-900'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-900')} />
-              <ColorSwatch color="bg-gray-800" active={canvasBackground === 'bg-gray-800'} onClick={() => onCanvasBackgroundChange?.('bg-gray-800')} />
-              <ColorSwatch color="bg-slate-900" active={canvasBackground === 'bg-slate-900'} onClick={() => onCanvasBackgroundChange?.('bg-slate-900')} />
-              <ColorSwatch color="bg-zinc-900" active={canvasBackground === 'bg-zinc-900'} onClick={() => onCanvasBackgroundChange?.('bg-zinc-900')} />
-              <ColorSwatch color="bg-gray-950" active={canvasBackground === 'bg-gray-950'} onClick={() => onCanvasBackgroundChange?.('bg-gray-950')} />
-              <ColorSwatch color="bg-stone-950" active={canvasBackground === 'bg-stone-950'} onClick={() => onCanvasBackgroundChange?.('bg-stone-950')} />
-            </div>
-          ) : (
-            <div className="flex gap-2 flex-wrap">
-              <ColorSwatch color="bg-gray-50" active={canvasBackground === 'bg-gray-50'} onClick={() => onCanvasBackgroundChange?.('bg-gray-50')} />
-              <ColorSwatch color="bg-neutral-100" active={canvasBackground === 'bg-neutral-100'} onClick={() => onCanvasBackgroundChange?.('bg-neutral-100')} />
-            </div>
-          )}
+            {mounted && resolvedTheme === "light" ? (
+              <div className="flex gap-2 flex-wrap">
+                <ColorSwatch
+                  color="bg-white"
+                  active={canvasBackground === "bg-white"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-white")}
+                />
+                <ColorSwatch
+                  color="bg-gray-50"
+                  active={canvasBackground === "bg-gray-50"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-gray-50")}
+                />
+                <ColorSwatch
+                  color="bg-neutral-100"
+                  active={canvasBackground === "bg-neutral-100"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-neutral-100")}
+                />
+                <ColorSwatch
+                  color="bg-neutral-300"
+                  active={canvasBackground === "bg-neutral-300"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-neutral-300")}
+                />
+                <ColorSwatch
+                  color="bg-yellow-100"
+                  active={canvasBackground === "bg-yellow-100"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-yellow-100")}
+                />
+              </div>
+            ) : mounted && resolvedTheme === "dark" ? (
+              <div className="flex gap-2 flex-wrap">
+                <ColorSwatch
+                  color="bg-neutral-900"
+                  active={canvasBackground === "bg-neutral-900"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-neutral-900")}
+                />
+                <ColorSwatch
+                  color="bg-gray-800"
+                  active={canvasBackground === "bg-gray-800"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-gray-800")}
+                />
+                <ColorSwatch
+                  color="bg-slate-900"
+                  active={canvasBackground === "bg-slate-900"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-slate-900")}
+                />
+                <ColorSwatch
+                  color="bg-gray-950"
+                  active={canvasBackground === "bg-gray-950"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-gray-950")}
+                />
+                <ColorSwatch
+                  color="bg-stone-950"
+                  active={canvasBackground === "bg-stone-950"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-stone-950")}
+                />
+              </div>
+            ) : (
+              <div className="flex gap-2 flex-wrap">
+                <ColorSwatch
+                  color="bg-gray-50"
+                  active={canvasBackground === "bg-gray-50"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-gray-50")}
+                />
+                <ColorSwatch
+                  color="bg-neutral-100"
+                  active={canvasBackground === "bg-neutral-100"}
+                  onClick={() => onCanvasBackgroundChange?.("bg-neutral-100")}
+                />
+              </div>
+            )}
 
             <div className="w-[1.5px] h-5 bg-gray-200 dark:bg-neutral-600 mx-1 shrink-0" />
             <BackgroundColorPicker
@@ -168,24 +269,30 @@ export default function Sidebar({ onOpenClick, onSaveClick, onResetCanvas, canva
             />
           </div>
         </div>
-
       </div>
-    </div> 
-  )
+    </div>
+  );
 }
 
 /* ------------------ Components ------------------ */
 
 type MenuItemProps = {
-  icon: React.ReactNode
-  label: string
-  shortcut?: string
-  highlight?: boolean
-  isResetCanvas?: boolean
-  onClick?: () => void
-}
+  icon: React.ReactNode;
+  label: string;
+  shortcut?: string;
+  highlight?: boolean;
+  isResetCanvas?: boolean;
+  onClick?: () => void;
+};
 
-function MenuItem({ icon, label, shortcut, highlight, isResetCanvas, onClick }: MenuItemProps) {
+function MenuItem({
+  icon,
+  label,
+  shortcut,
+  highlight,
+  isResetCanvas,
+  onClick,
+}: MenuItemProps) {
   return (
     <div
       onClick={onClick}
@@ -202,17 +309,19 @@ function MenuItem({ icon, label, shortcut, highlight, isResetCanvas, onClick }: 
       </div>
 
       {shortcut && (
-        <span className="text-xs text-neutral-400 hidden lg:block">{shortcut}</span>
+        <span className="text-xs text-neutral-400 hidden lg:block">
+          {shortcut}
+        </span>
       )}
     </div>
-  )
+  );
 }
 
 type ThemeButtonProps = {
-  icon: React.ReactNode
-  active?: boolean
-  onClick?: () => void
-}
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+};
 
 function ThemeButton({ icon, active, onClick }: ThemeButtonProps) {
   return (
@@ -220,18 +329,27 @@ function ThemeButton({ icon, active, onClick }: ThemeButtonProps) {
       onClick={onClick}
       className={`
         w-6 h-6 flex items-center justify-center rounded-lg transition
-        ${active 
-          ? "bg-blue-400 text-white" 
-          : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800"
+        ${
+          active
+            ? "bg-blue-400 text-white"
+            : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800"
         }
       `}
     >
       {icon}
     </button>
-  )
+  );
 }
 
-function ColorSwatch({ color, active, onClick }: { color: string; active?: boolean; onClick?: () => void }) {
+function ColorSwatch({
+  color,
+  active,
+  onClick,
+}: {
+  color: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <div
       onClick={onClick}
@@ -242,7 +360,7 @@ function ColorSwatch({ color, active, onClick }: { color: string; active?: boole
         ${onClick ? "hover:scale-110" : ""}
       `}
     />
-  )
+  );
 }
 
 type BackgroundColorPickerProps = {
@@ -250,7 +368,10 @@ type BackgroundColorPickerProps = {
   onChangeColor?: (color: string) => void;
 };
 
-function BackgroundColorPicker({ activeColor, onChangeColor }: BackgroundColorPickerProps) {
+function BackgroundColorPicker({
+  activeColor,
+  onChangeColor,
+}: BackgroundColorPickerProps) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(activeColor);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -315,7 +436,9 @@ function BackgroundColorPicker({ activeColor, onChangeColor }: BackgroundColorPi
         style={{ backgroundColor: activeColor }}
         title="Escolher qualquer cor de fundo"
       />
-      {open && anchorRect && typeof document !== "undefined" &&
+      {open &&
+        anchorRect &&
+        typeof document !== "undefined" &&
         createPortal(
           <div
             ref={popoverRef}
@@ -326,7 +449,7 @@ function BackgroundColorPicker({ activeColor, onChangeColor }: BackgroundColorPi
               transform: "translateY(-50%)",
             }}
           >
-            <div className="grid grid-cols-5 gap-1 mb-2">
+            <div className="grid grid-cols-6 gap-1 mb-2">
               {PRESET_COLORS.map((color) => (
                 <button
                   key={color}
@@ -345,12 +468,14 @@ function BackgroundColorPicker({ activeColor, onChangeColor }: BackgroundColorPi
               className="w-full px-2 py-1 text-xs rounded border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 text-[#1b1b1f] dark:text-white outline-none focus:ring-1 focus:ring-blue-400"
             />
           </div>,
-          document.body
+          document.body,
         )}
     </>
   );
 }
 
 function Divider() {
-  return <div className="my-3 border-t border-neutral-200 dark:border-neutral-800" />
+  return (
+    <div className="my-3 border-t border-neutral-200 dark:border-neutral-800" />
+  );
 }

@@ -1,14 +1,52 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { Hand, MousePointer2, Square, Circle, Type, Minus, Triangle, ArrowRight, Pencil, Image as ImageIcon, Eraser, Diamond, Trash2, Sun, Moon, Globe2, LassoSelect, ChevronDown, Check, Hash } from 'lucide-react';
-import LaserIcon from '../LaserIcon';
-import { useTheme } from '@/contexts/ThemeContext';
+import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
+import {
+  Hand,
+  MousePointer2,
+  Square,
+  Circle,
+  Type,
+  Minus,
+  Triangle,
+  ArrowRight,
+  Pencil,
+  Image as ImageIcon,
+  Eraser,
+  Diamond,
+  Trash2,
+  Sun,
+  Moon,
+  Globe2,
+  LassoSelect,
+  ChevronDown,
+  Check,
+  Hash,
+} from "lucide-react";
+import LaserIcon from "./LaserIcon";
+import { useTheme } from "@/contexts/ThemeContext";
 
-export type Tool = 'hand' | 'select' | 'rectangle' | 'diamond' | 'triangle' | 'circle' | 'arrow' | 'line' | 'pencil' | 'text' | 'image' | 'eraser';
+export type Tool =
+  | "hand"
+  | "select"
+  | "rectangle"
+  | "diamond"
+  | "triangle"
+  | "circle"
+  | "arrow"
+  | "line"
+  | "pencil"
+  | "text"
+  | "image"
+  | "eraser";
 
-export type ExtraTool = 'none' | 'frame' | 'web-embed' | 'laser-pointer' | 'lasso-selection';
+export type ExtraTool =
+  | "none"
+  | "frame"
+  | "web-embed"
+  | "laser-pointer"
+  | "lasso-selection";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -23,54 +61,104 @@ interface ToolbarProps {
 
 // Shortcut mapping: key -> tool (t=text, g=triangle/triângulo to avoid conflict)
 const SHORTCUT_MAP: Record<string, Tool> = {
-  'h': 'hand', 's': 'select', 'r': 'rectangle', 'd': 'diamond', 'c': 'circle',
-  'a': 'arrow', 'l': 'line', 'p': 'pencil', 'g': 'triangle', 't': 'text', 'i': 'image', 'e': 'eraser',
-  '1': 'select', '2': 'rectangle', '3': 'diamond', '4': 'triangle', '5': 'circle',
-  '6': 'arrow', '7': 'line', '8': 'pencil', '9': 'text', '0': 'image'
+  h: "hand",
+  s: "select",
+  r: "rectangle",
+  d: "diamond",
+  c: "circle",
+  a: "arrow",
+  l: "line",
+  p: "pencil",
+  g: "triangle",
+  t: "text",
+  i: "image",
+  e: "eraser",
+  "1": "select",
+  "2": "rectangle",
+  "3": "diamond",
+  "4": "triangle",
+  "5": "circle",
+  "6": "arrow",
+  "7": "line",
+  "8": "pencil",
+  "9": "text",
+  "0": "image",
 };
 
 const TOOL_SHORTCUT_NUMBER: Partial<Record<Tool, number>> = {
-  select: 1, rectangle: 2, diamond: 3, triangle: 4, circle: 5,
-  arrow: 6, line: 7, pencil: 8, text: 9, image: 0
+  select: 1,
+  rectangle: 2,
+  diamond: 3,
+  triangle: 4,
+  circle: 5,
+  arrow: 6,
+  line: 7,
+  pencil: 8,
+  text: 9,
+  image: 0,
 };
 
 const TOOL_SHORTCUT_LETTER: Partial<Record<Tool, string>> = {
-
-  eraser: 'e'
+  eraser: "e",
 };
 
 const CC_DELAY_MS = 400;
 
-const extraTools: { id: Exclude<ExtraTool, 'none'>; label: string; icon: React.ReactNode }[] = [
-  { id: 'frame', label: 'Frame tool', icon: <Hash size={18} /> },
-  { id: 'web-embed', label: 'Web embed', icon: <Globe2 size={18} /> },
-  { id: 'laser-pointer', label: 'Laser pointer', icon: <LaserIcon size={18} /> },
-  { id: 'lasso-selection', label: 'Lasso selection', icon: <LassoSelect size={18} /> },
+const extraTools: {
+  id: Exclude<ExtraTool, "none">;
+  label: string;
+  icon: React.ReactNode;
+}[] = [
+  { id: "frame", label: "Frame tool", icon: <Hash size={18} /> },
+  { id: "web-embed", label: "Web embed", icon: <Globe2 size={18} /> },
+  {
+    id: "laser-pointer",
+    label: "Laser pointer",
+    icon: <LaserIcon size={18} />,
+  },
+  {
+    id: "lasso-selection",
+    label: "Lasso selection",
+    icon: <LassoSelect size={18} />,
+  },
 ];
 
-const shapeToolIds: Tool[] = ['rectangle', 'diamond', 'triangle', 'circle'];
-const lineToolIds: Tool[] = ['arrow', 'line'];
+const shapeToolIds: Tool[] = ["rectangle", "diamond", "triangle", "circle"];
+const lineToolIds: Tool[] = ["arrow", "line"];
 
-const tools: { id: Tool; icon: React.ReactNode; label: string; isAction?: boolean }[] = [
-  { id: 'hand', icon: <Hand size={18} />, label: 'Hand (panning tool) - H or null' },
-  { id: 'select', icon: <MousePointer2 size={18} />, label: 'Selection - S or 1' },
-  { id: 'rectangle', icon: <Square size={18} />, label: 'Rectangle - R or 2' },
-  { id: 'diamond', icon: <Diamond size={18} />, label: 'Diamond - D or 3' },
-  { id: 'triangle', icon: <Triangle size={18} />, label: 'Triangle - G or 4' },
-  { id: 'circle', icon: <Circle size={18} />, label: 'Circle - C or 5' },
-  { id: 'arrow', icon: <ArrowRight size={18} />, label: 'Arrow - A or 6' },
-  { id: 'line', icon: <Minus size={18} />, label: 'Line - L or 7' },
-  { id: 'pencil', icon: <Pencil size={18} />, label: 'Pencil - P or 8' },
-  { id: 'text', icon: <Type size={18} />, label: 'Text - T or 9' },
-  { id: 'image', icon: <ImageIcon size={18} />, label: 'Insert image - 0' },
-  { id: 'eraser', icon: <Eraser size={18} />, label: 'Eraser - E' },
+const tools: {
+  id: Tool;
+  icon: React.ReactNode;
+  label: string;
+  isAction?: boolean;
+}[] = [
+  {
+    id: "hand",
+    icon: <Hand size={18} />,
+    label: "Hand (panning tool) - H or null",
+  },
+  {
+    id: "select",
+    icon: <MousePointer2 size={18} />,
+    label: "Selection - S or 1",
+  },
+  { id: "rectangle", icon: <Square size={18} />, label: "Rectangle - R or 2" },
+  { id: "diamond", icon: <Diamond size={18} />, label: "Diamond - D or 3" },
+  { id: "triangle", icon: <Triangle size={18} />, label: "Triangle - G or 4" },
+  { id: "circle", icon: <Circle size={18} />, label: "Circle - C or 5" },
+  { id: "arrow", icon: <ArrowRight size={18} />, label: "Arrow - A or 6" },
+  { id: "line", icon: <Minus size={18} />, label: "Line - L or 7" },
+  { id: "pencil", icon: <Pencil size={18} />, label: "Pencil - P or 8" },
+  { id: "text", icon: <Type size={18} />, label: "Text - T or 9" },
+  { id: "image", icon: <ImageIcon size={18} />, label: "Insert image - 0" },
+  { id: "eraser", icon: <Eraser size={18} />, label: "Eraser - E" },
 ];
 
 interface ExtraToolDropdownProps {
   isOpen: boolean;
   position: { top: number; left: number } | null;
   activeExtraTool: ExtraTool;
-  onSelect: (tool: Exclude<ExtraTool, 'none'>) => void;
+  onSelect: (tool: Exclude<ExtraTool, "none">) => void;
   onClose: () => void;
 }
 
@@ -83,7 +171,7 @@ const ExtraToolDropdown: React.FC<ExtraToolDropdownProps> = ({
 }) => {
   if (!isOpen || !position) return null;
 
-  if (typeof document === 'undefined') return null;
+  if (typeof document === "undefined") return null;
 
   const isMobile = window.innerWidth < 640;
 
@@ -91,10 +179,10 @@ const ExtraToolDropdown: React.FC<ExtraToolDropdownProps> = ({
     <div className="fixed inset-0 z-200" onClick={onClose}>
       <div
         className="absolute z-201 w-48 bg-white dark:bg-[#1C1C1C] rounded-md shadow-lg border border-neutral-200 dark:border-neutral-800"
-        style={{ 
-          top: position.top, 
+        style={{
+          top: position.top,
           left: Math.min(position.left, window.innerWidth - 200), // Avoid overflow
-          transform: isMobile ? 'translateY(-100%)' : 'none' 
+          transform: isMobile ? "translateY(-100%)" : "none",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -105,10 +193,11 @@ const ExtraToolDropdown: React.FC<ExtraToolDropdownProps> = ({
               <button
                 key={option.id}
                 onClick={() => onSelect(option.id)}
-                className={`flex items-center justify-between w-full px-3 py-2 text-left text-sm rounded-sm transition-colors ${isActive
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'
-                    : 'text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                  }`}
+                className={`flex items-center justify-between w-full px-3 py-2 text-left text-sm rounded-sm transition-colors ${
+                  isActive
+                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300"
+                    : "text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                }`}
               >
                 <span className="flex items-center gap-2">
                   <span className="text-neutral-600 dark:text-neutral-300">
@@ -117,7 +206,10 @@ const ExtraToolDropdown: React.FC<ExtraToolDropdownProps> = ({
                   <span>{option.label}</span>
                 </span>
                 {isActive && (
-                  <Check className="text-blue-500 dark:text-blue-400" size={16} />
+                  <Check
+                    className="text-blue-500 dark:text-blue-400"
+                    size={16}
+                  />
                 )}
               </button>
             );
@@ -125,7 +217,7 @@ const ExtraToolDropdown: React.FC<ExtraToolDropdownProps> = ({
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 
@@ -149,30 +241,33 @@ const ShapeDropdown: React.FC<ShapeDropdownProps> = ({
   onClose,
 }) => {
   if (!isOpen || !position) return null;
-  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
+  const isMobile =
+    typeof window !== "undefined" ? window.innerWidth < 640 : false;
 
   return createPortal(
     <div className="fixed inset-0 z-200" onClick={onClose}>
       <div
         className="absolute z-201 bg-white dark:bg-[#1C1C1C] rounded-md shadow-lg border border-neutral-200 dark:border-neutral-800 p-1 flex gap-1"
-        style={{ 
-          top: position.top, 
+        style={{
+          top: position.top,
           left: Math.max(8, Math.min(position.left, window.innerWidth - 240)),
-          transform: isMobile ? 'translateY(-100%)' : 'none' 
+          transform: isMobile ? "translateY(-100%)" : "none",
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {toolIds.map((toolId) => {
-          const tool = tools.find(t => t.id === toolId)!;
-          const isActive = activeToolIds.includes(activeTool) && activeTool === toolId;
+          const tool = tools.find((t) => t.id === toolId)!;
+          const isActive =
+            activeToolIds.includes(activeTool) && activeTool === toolId;
           return (
             <button
               key={toolId}
               onClick={() => onSelect(toolId)}
-              className={`p-2 rounded-md transition-colors ${isActive
-                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-400'
-                  : 'hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300'
-                }`}
+              className={`p-2 rounded-md transition-colors ${
+                isActive
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-400"
+                  : "hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300"
+              }`}
               title={tool.label}
             >
               {tool.icon}
@@ -181,7 +276,7 @@ const ShapeDropdown: React.FC<ShapeDropdownProps> = ({
         })}
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 
@@ -201,17 +296,29 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [isExtraToolModalOpen, setIsExtraToolModalOpen] = React.useState(false);
   const [isShapeModalOpen, setIsShapeModalOpen] = React.useState(false);
   const [isLineModalOpen, setIsLineModalOpen] = React.useState(false);
-  const currentExtraTool = extraTools.find((tool) => tool.id === activeExtraTool) ?? extraTools[0];
+  const currentExtraTool =
+    extraTools.find((tool) => tool.id === activeExtraTool) ?? extraTools[0];
   const extraToolButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const shapeButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const lineButtonRef = React.useRef<HTMLButtonElement | null>(null);
-  const [extraMenuPosition, setExtraMenuPosition] = React.useState<{ top: number; left: number } | null>(null);
-  const [shapeMenuPosition, setShapeMenuPosition] = React.useState<{ top: number; left: number } | null>(null);
-  const [lineMenuPosition, setLineMenuPosition] = React.useState<{ top: number; left: number } | null>(null);
+  const [extraMenuPosition, setExtraMenuPosition] = React.useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const [shapeMenuPosition, setShapeMenuPosition] = React.useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const [lineMenuPosition, setLineMenuPosition] = React.useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   // Default shape to show when none is active
-  const [lastActiveShape, setLastActiveShape] = React.useState<Tool>('rectangle');
-  const [lastActiveLineTool, setLastActiveLineTool] = React.useState<Tool>('arrow');
+  const [lastActiveShape, setLastActiveShape] =
+    React.useState<Tool>("rectangle");
+  const [lastActiveLineTool, setLastActiveLineTool] =
+    React.useState<Tool>("arrow");
 
   useEffect(() => {
     if (shapeToolIds.includes(activeTool)) {
@@ -230,26 +337,35 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger when typing in input/textarea/contenteditable
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
         return;
       }
 
       // Ctrl+D - Dark theme
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
         e.preventDefault();
-        setTheme('dark');
+        setTheme("dark");
         return;
       }
 
       // Ctrl+L - Light theme
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "l") {
         e.preventDefault();
-        setTheme('light');
+        setTheme("light");
         return;
       }
 
       // cc - Clear canvas (double-tap c)
-      if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (
+        e.key.toLowerCase() === "c" &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey
+      ) {
         const now = Date.now();
         if (now - lastCKeyRef.current < CC_DELAY_MS) {
           e.preventDefault();
@@ -261,7 +377,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       }
 
       // ? - Show shortcuts modal
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         onHelpClick?.();
         return;
@@ -271,30 +387,30 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       const tool = SHORTCUT_MAP[key];
       if (tool) {
         e.preventDefault();
-        if (tool === 'image') {
+        if (tool === "image") {
           fileInputRef.current?.click();
         } else {
           setActiveTool(tool);
-          setActiveExtraTool('none');
+          setActiveExtraTool("none");
         }
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setActiveTool, onClearCanvas, onHelpClick, setTheme, setActiveExtraTool]);
 
   const handleThemeToggle = () => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   const handleClick = (toolId: Tool) => {
     onToolClick?.(toolId);
-    if (toolId === 'image') {
+    if (toolId === "image") {
       fileInputRef.current?.click();
     } else {
       setActiveTool(toolId);
-      setActiveExtraTool('none');
+      setActiveExtraTool("none");
     }
   };
 
@@ -304,7 +420,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       if (willOpen && extraToolButtonRef.current) {
         const rect = extraToolButtonRef.current.getBoundingClientRect();
         const isMobile = window.innerWidth < 640;
-        
+
         if (isMobile) {
           // On mobile, the toolbar is at the bottom, so open upwards
           setExtraMenuPosition({
@@ -360,17 +476,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {tools.map((tool) => {
           const shortcutNum = TOOL_SHORTCUT_NUMBER[tool.id];
           const shortcutLetter = TOOL_SHORTCUT_LETTER[tool.id];
-          const badge = shortcutLetter ?? (shortcutNum !== undefined ? String(shortcutNum) : undefined);
+          const badge =
+            shortcutLetter ??
+            (shortcutNum !== undefined ? String(shortcutNum) : undefined);
           return (
             <button
               key={tool.id}
               onClick={() => handleClick(tool.id)}
-              className={`relative p-2 rounded-md transition-colors shrink-0 ${activeTool === tool.id && !tool.isAction && activeExtraTool === 'none'
-                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-400'
+              className={`relative p-2 rounded-md transition-colors shrink-0 ${
+                activeTool === tool.id &&
+                !tool.isAction &&
+                activeExtraTool === "none"
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-400"
                   : tool.isAction
-                    ? 'hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-600 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400'
-                    : 'hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300'
-                }`}
+                    ? "hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-600 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400"
+                    : "hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300"
+              }`}
               title={tool.label}
             >
               {tool.icon}
@@ -391,10 +512,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <button
             key={tool.id}
             onClick={() => handleClick(tool.id)}
-            className={`p-2 rounded-md transition-colors shrink-0 ${activeTool === tool.id && activeExtraTool === 'none'
-                ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-400'
-                : 'hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300'
-              }`}
+            className={`p-2 rounded-md transition-colors shrink-0 ${
+              activeTool === tool.id && activeExtraTool === "none"
+                ? "bg-blue-100 dark:bg-blue-900/50 text-blue-400"
+                : "hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300"
+            }`}
           >
             {tool.icon}
           </button>
@@ -404,12 +526,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           ref={shapeButtonRef}
           onClick={handleShapeButtonClick}
-          className={`p-2 rounded-md transition-colors flex items-center gap-1 ${shapeToolIds.includes(activeTool)
-              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-400'
-              : 'text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800'
-            }`}
+          className={`p-2 rounded-md transition-colors flex items-center gap-1 ${
+            shapeToolIds.includes(activeTool)
+              ? "bg-blue-100 dark:bg-blue-900/50 text-blue-400"
+              : "text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800"
+          }`}
         >
-          {tools.find(t => t.id === lastActiveShape)?.icon}
+          {tools.find((t) => t.id === lastActiveShape)?.icon}
           <ChevronDown size={14} className="text-neutral-400" />
         </button>
 
@@ -417,38 +540,48 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           ref={lineButtonRef}
           onClick={handleLineButtonClick}
-          className={`p-2 rounded-md transition-colors flex items-center gap-1 ${lineToolIds.includes(activeTool)
-              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-400'
-              : 'text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800'
-            }`}
+          className={`p-2 rounded-md transition-colors flex items-center gap-1 ${
+            lineToolIds.includes(activeTool)
+              ? "bg-blue-100 dark:bg-blue-900/50 text-blue-400"
+              : "text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800"
+          }`}
         >
-          {tools.find(t => t.id === lastActiveLineTool)?.icon}
+          {tools.find((t) => t.id === lastActiveLineTool)?.icon}
           <ChevronDown size={14} className="text-neutral-400" />
         </button>
 
         {/* Other tools shown individually */}
-        {tools.filter(t => !['hand', 'select', ...shapeToolIds, ...lineToolIds].includes(t.id)).map((tool) => (
-          <button
-            key={tool.id}
-            onClick={() => handleClick(tool.id)}
-            className={`p-2 rounded-md transition-colors shrink-0 ${activeTool === tool.id && activeExtraTool === 'none'
-                ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-400'
-                : 'hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300'
+        {tools
+          .filter(
+            (t) =>
+              !["hand", "select", ...shapeToolIds, ...lineToolIds].includes(
+                t.id,
+              ),
+          )
+          .map((tool) => (
+            <button
+              key={tool.id}
+              onClick={() => handleClick(tool.id)}
+              className={`p-2 rounded-md transition-colors shrink-0 ${
+                activeTool === tool.id && activeExtraTool === "none"
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-400"
+                  : "hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-300"
               }`}
-          >
-            {tool.icon}
-          </button>
-        ))}
+            >
+              {tool.icon}
+            </button>
+          ))}
       </div>
 
       <div className="flex gap-1 border-l border-gray-200 dark:border-neutral-700 pl-1 ml-1 items-center">
         <button
           ref={extraToolButtonRef}
           onClick={handleExtraButtonClick}
-          className={`p-2 rounded-md transition-colors flex items-center gap-1 ${activeExtraTool !== 'none'
-              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
-              : 'text-gray-600 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800'
-            }`}
+          className={`p-2 rounded-md transition-colors flex items-center gap-1 ${
+            activeExtraTool !== "none"
+              ? "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400"
+              : "text-gray-600 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800"
+          }`}
           title={currentExtraTool.label}
         >
           <span className="flex items-center gap-1">
@@ -461,9 +594,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           onClick={handleThemeToggle}
           className="hidden md:flex p-2 rounded-md transition-colors text-gray-600 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800"
-          title={resolvedTheme === 'dark' ? 'Light mode - Ctrl+L' : 'Dark mode - Ctrl+D'}
+          title={
+            resolvedTheme === "dark"
+              ? "Light mode - Ctrl+L"
+              : "Dark mode - Ctrl+D"
+          }
         >
-          {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         <button
           onClick={onClearCanvas}

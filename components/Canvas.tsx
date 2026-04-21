@@ -699,6 +699,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     textarea.style.boxSizing = 'border-box';
     textarea.style.outline = 'none';
+    textarea.style.border = 'none';
     textarea.style.zIndex = '9999';
     textarea.style.background = 'transparent';
     textarea.style.minWidth = '20px';
@@ -710,7 +711,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     textarea.style.opacity = '1';
     textarea.style.overflow = 'hidden';
     textarea.style.resize = 'none';
-    textarea.style.lineHeight = '1.2';
+    // Keep editing caret/selection tight to glyph bounds.
+    textarea.style.lineHeight = '1';
+    textarea.style.letterSpacing = '0';
     textarea.style.whiteSpace = 'pre';
     textarea.style.transformOrigin = 'top left';
     textarea.style.transform = `scale(${scale})`;
