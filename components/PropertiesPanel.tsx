@@ -204,6 +204,20 @@ export function PropertiesPanel({
   onLayerChange,
   onDuplicateSelection,
 }: PropertiesPanelProps) {
+  // Early return check - must be before any hooks
+  const isDrawingTool = [
+    "rectangle",
+    "circle",
+    "triangle",
+    "line",
+    "arrow",
+    "pencil",
+    "text",
+    "image",
+  ].includes(activeTool);
+
+  if (selectedElements.length === 0 && !isDrawingTool) return null;
+
   const [strokeHexInput, setStrokeHexInput] = useState("#000000");
   const [backgroundHexInput, setBackgroundHexInput] = useState("#ffffff");
   const [activeMobilePanel, setActiveMobilePanel] = useState<
@@ -232,16 +246,6 @@ export function PropertiesPanel({
   const STROKE_COLORS = isDark ? STROKE_COLORS_DARK : STROKE_COLORS_LIGHT;
   const desktopStrokeColors = STROKE_COLORS.slice(0, 5);
   const desktopBackgroundColors = BG_COLORS.slice(0, 5);
-  const isDrawingTool = [
-    "rectangle",
-    "circle",
-    "triangle",
-    "line",
-    "arrow",
-    "pencil",
-    "text",
-    "image",
-  ].includes(activeTool);
 
   const getMobileModalWidth = (
     panel: "stroke" | "background" | "filters" | "layers",
@@ -356,8 +360,6 @@ export function PropertiesPanel({
 
     return () => window.removeEventListener("resize", updateScrollState);
   }, [activeMobilePanel, isMounted, selectedElements, activeTool]);
-
-  if (selectedElements.length === 0 && !isDrawingTool) return null;
 
   const first =
     selectedElements.length > 0
